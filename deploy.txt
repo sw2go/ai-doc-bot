@@ -1,0 +1,39 @@
+docker build -t company/ls-doc-bot .                          ... build local image 
+docker run -p 3000:3000 --env-file .env company/ls-doc-bot    ... run local and test
+docker push company/ls-doc-bot                                ... push the image to docker.io
+
+Create a container instance on azure:
+Resource-Group:     ls-doc-bot-group
+Container-Name:     ls-doc-bot-app
+Region:             (Europe) Switzerland North
+Availability zones: None
+SKU:                Standard
+Image source:	    Other registry, Public
+Image:		        company/ls-doc-bot
+OS type:	        Linux
+Number of CPU: 	    1
+Memory (GiB):	    1.5
+GPU type:	        None
+Networking:	        Public
+DNS name label:     ls-doc-bot
+DNS nl scope reuse: Tenant
+Ports:              3000 TCP
+Restart policy:     On failure
+Advanced:	        Enter your environment variables, see .env and mark them as secure
+Key management:     MMK
+
+
+To inspect the docker  container locally, run the image locally: 
+docker run -p 3000:3000 --env-file .env company/ls-doc-bot
+
+Find the running container name with:
+docker ps
+
+docker exec -it container-name sh
+
+/app $
+
+
+
+
+

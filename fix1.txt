@@ -1,0 +1,53 @@
+
+Fehler mit "npm run dev" läuft alles
+
+Wenn als Docker container gibt's Fehler mit langchain "400 Bad request"
+
+ich hatte mal "axios" installiert, und dann wieder entfernt.
+
+danach ging es nicht mehr und ich musste immer "axios" installieren obwohl es bei der vorlage nicht dabei war
+
+
+fix im package-lock.json:
+
+    "openai": {
+      "version": "3.2.1",
+      "resolved": "https://registry.npmjs.org/openai/-/openai-3.2.1.tgz",
+      "integrity": "sha512-762C9BNlJPbjjlWZi4WYK9iM2tAVAv0uUp1UmI34vb0CN5T2mjB/qM6RYBmNKMh/dN9fC+bxqPwWJZUTWW052A==",
+      "requires": {
+        "axios": "^0.26.0",
+        "form-data": "^4.0.0"
+
+
+    "axios": {
+      "version": "0.26.1",
+      "resolved": "https://registry.npmjs.org/axios/-/axios-0.26.1.tgz",
+      "integrity": "sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==",
+      "requires": {
+        "follow-redirects": "^1.14.8"
+      }
+    },
+
+
+
+vorher was nicht ging:
+
+    "openai": {
+      "version": "3.2.1",
+      "resolved": "https://registry.npmjs.org/openai/-/openai-3.2.1.tgz",
+      "integrity": "sha512-762C9BNlJPbjjlWZi4WYK9iM2tAVAv0uUp1UmI34vb0CN5T2mjB/qM6RYBmNKMh/dN9fC+bxqPwWJZUTWW052A==",
+      "requires": {
+        "axios": "^0.26.0",
+        "form-data": "^4.0.0"
+      },
+      "dependencies": {
+        "axios": {
+          "version": "0.26.1",
+          "resolved": "https://registry.npmjs.org/axios/-/axios-0.26.1.tgz",
+          "integrity": "sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==",
+          "requires": {
+            "follow-redirects": "^1.14.8"
+          }
+        }
+      }
+    },

@@ -1,0 +1,30 @@
+{
+  "type":"OpenAI-QA",
+  "modelName": "gpt-3.5-turbo",
+  "maxTokens": 250,
+
+  "promptTemperature": 0.5,
+  "prompt": [
+    "Du bist ein KI-Assistent. Du hilfst beim Erstellen von Marketing Texten für Kunden und Interessenten von <Firma>.",  
+    "Im Kontext bekommst du einzelne Texte aus einem längeren Dokument das von <Firma> geschrieben ist.", 
+    "Beantworte die Frage konversationsbasiert und verwende dazu den bereitgestellten Kontext und andere Quellen zu den Themen IT und Individualsoftwareentwicklung.", 
+    "Bitte erfinde keine Hyperlinks.",      
+    "Frage: {question}",
+    "=========",
+    "{context}",
+    "=========",
+    "Antworte in Markdown:"
+  ],
+
+  "prepromptTemperature": 0.5,
+  "preprompt": [ 
+    "Gegeben ist die folgende Unterhaltung und eine Folgefrage. Formuliere die Folgefrage um, so dass sie eine eigenständige Frage wird.",
+    "Chat-Verlauf:",
+    "{chat_history}",
+    "Folgefrage: {question}",
+    "Eigenständige Frage:"
+  ],
+  
+  "numberSource":2,
+  "returnSource":true
+}
