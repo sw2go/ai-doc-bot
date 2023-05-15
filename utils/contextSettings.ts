@@ -1,4 +1,4 @@
-import { CONTEXT_FILE_EXTENSION, UPLOAD_FOLDER } from "@/config/pinecone";
+import { CONTEXT_FILE_EXTENSION, UPLOAD_FOLDER } from "@/config/serverSettings";
 import { Validator } from "jsonschema";
 import fs from 'fs';
 

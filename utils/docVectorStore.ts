@@ -3,7 +3,7 @@ import { OpenAIEmbeddings } from 'langchain/embeddings';
 import { PineconeStore } from 'langchain/vectorstores';
 import { pinecone } from '@/utils/pinecone-client';
 import { CustomPDFLoader } from '@/utils/customPDFLoader';
-import { PINECONE_INDEX_NAME } from '@/config/pinecone';
+import { PINECONE_INDEX_NAME } from '@/config/serverSettings';
 import { DirectoryLoader, TextLoader } from 'langchain/document_loaders';
 import { Document } from "langchain/document";
 import { NamespaceSummary, VectorOperationsApi } from '@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch';

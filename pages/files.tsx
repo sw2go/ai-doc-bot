@@ -1,5 +1,5 @@
 import Layout from "@/components/layout";
-import { NEXT_PUBLIC_CONTEXTS, NEXT_PUBLIC_EDITABLE_CONTEXTS, NEXT_PUBLIC_READONLY_CONTEXTS } from '@/config/contexts';
+import { NEXT_PUBLIC_CONTEXTS, NEXT_PUBLIC_EDITABLE_CONTEXTS, NEXT_PUBLIC_READONLY_CONTEXTS } from '@/config/clientSettings';
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 
 

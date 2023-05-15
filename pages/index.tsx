@@ -9,7 +9,7 @@ import botIcon from 'public/bot-image.png'
 import ReactMarkdown from 'react-markdown';
 import LoadingDots from '@/components/ui/LoadingDots';
 import { Document } from 'langchain/document';
-import { NEXT_PUBLIC_PROVIDER_URL, NEXT_PUBLIC_CONTEXTS } from '@/config/contexts';
+import { NEXT_PUBLIC_PROVIDER_URL, NEXT_PUBLIC_CONTEXTS, NEXT_PUBLIC_PROVIDER_NAME } from '@/config/clientSettings';
 import {
   Accordion,
   AccordionContent,
@@ -334,7 +334,7 @@ export default function ChatPage() {
         </div>
         <footer className="m-auto p-4">
           <a href={NEXT_PUBLIC_PROVIDER_URL}>
-            {NEXT_PUBLIC_CONTEXTS[0]} IT GmbH
+            {NEXT_PUBLIC_PROVIDER_NAME}
           </a>
         </footer>
       </Layout>
