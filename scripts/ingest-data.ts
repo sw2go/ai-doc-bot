@@ -8,7 +8,7 @@ import { DocVectorStore } from '@/utils/docVectorStore';
 /* Name of directory to retrieve your files from */
 const filePath = 'docs';
 
-const INGEST_SCRIPT_NAMESPACE = NEXT_PUBLIC_CONTEXTS[0];  // Default namespace is SUBJECT_NAME from environment
+const INGEST_SCRIPT_NAMESPACE = NEXT_PUBLIC_CONTEXTS()[0];  // Default namespace is SUBJECT_NAME from environment
 
 /**
  * run when developping to ingest with all the txt and pdf files in the docs folder

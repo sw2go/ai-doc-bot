@@ -22,7 +22,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [sourceDocs, setSourceDocs] = useState<Document[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [contextName, setNamespace] = useState<string>(NEXT_PUBLIC_CONTEXTS[0]);
+  const [contextName, setNamespace] = useState<string>(NEXT_PUBLIC_CONTEXTS()[0]);
   const [messageState, setMessageState] = useState<{
     messages: Message[];
     pending?: string;
@@ -172,7 +172,7 @@ export default function ChatPage() {
           <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center">
             <span className="mr-1">Chat mit</span> 
             <select value={contextName} onChange={(e)=> {setNamespace(e.target.value)}}>
-              {NEXT_PUBLIC_CONTEXTS.map((namespace, index) => {
+              {NEXT_PUBLIC_CONTEXTS().map((namespace, index) => {
                 return(
                         <option key={`option-${index}`} value={namespace}>
                           {namespace}
@@ -333,8 +333,8 @@ export default function ChatPage() {
           </main>
         </div>
         <footer className="m-auto p-4">
-          <a href={NEXT_PUBLIC_PROVIDER_URL}>
-            {NEXT_PUBLIC_PROVIDER_NAME}
+          <a href={NEXT_PUBLIC_PROVIDER_URL()}>
+            {NEXT_PUBLIC_PROVIDER_NAME()}
           </a>
         </footer>
       </Layout>

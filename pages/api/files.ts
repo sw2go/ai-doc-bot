@@ -223,7 +223,7 @@ const deleteVectors = async (
 
 const validateSecret = (namespace: string, secret: string) => {
   const admin_secret = process.env.ADMIN_SECRET;
-  return admin_secret && (NEXT_PUBLIC_READONLY_CONTEXTS.every(item => item != namespace) || secret == process.env.ADMIN_SECRET);
+  return admin_secret && (NEXT_PUBLIC_READONLY_CONTEXTS().every(item => item != namespace) || secret == process.env.ADMIN_SECRET);
 }
 
 

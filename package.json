@@ -1,6 +1,6 @@
 {
-  "name": "gpt4-langchain-pdf-chatbot",
-  "version": "0.1.0",
+  "name": "doc-bot",
+  "version": "0.1.1",
   "private": true,
   "engines": {
     "node": ">=18"
