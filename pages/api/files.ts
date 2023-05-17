@@ -3,10 +3,9 @@ import fs from "fs";
 import { DocVectorStore } from "@/utils/docVectorStore";
 import { pinecone } from "@/utils/pinecone-client";
 import { PINECONE_INDEX_NAME, RESERVED_FILE_EXTENSIONS, UPLOAD_FOLDER, CONTEXT_FILE_EXTENSION } from "@/config/serverSettings";
-import { NEXT_PUBLIC_READONLY_CONTEXTS,  } from "@/config/clientSettings";
 import { NextApiRequest, NextApiResponse } from "next";
 import { ContextSettings } from "@/utils/contextSettings";
-import { Validator } from "jsonschema";
+import { READONLY_CONTEXTS } from "@/config/runtimeSettings";
 
 export default async function handler(
   req: NextApiRequest, 
@@ -110,20 +109,12 @@ const uploadFiles = async (
     
     const form = new formidable.IncomingForm({ uploadDir: UPLOAD_FOLDER, keepExtensions: true });
   
-    // rename uploading QA-Docs files to it's original name (to have a meaningful sourcefile names when displaying references)
-    // files with reserved extensions get the namespace
+    // rename uploading QA-Docs files to it's original name (to have meaningful sourcefile names when displaying references)
+    // keep temporary filenames for files with reserved extensions ( we rename later after successfull json parsing only) 
     form.on('fileBegin', (name: string, file: File) => {
-
-      let fileName = file.originalFilename as string;
-
-      for (let ext of RESERVED_FILE_EXTENSIONS) {
-        if (file.originalFilename?.endsWith(ext)) {
-          fileName = `${contextName}${ext}`;
-          break;
-        }
+      if (!RESERVED_FILE_EXTENSIONS.some(ext => file.originalFilename?.endsWith(ext))) {
+        file.filepath = file.filepath.replace(file.newFilename, file.originalFilename as string);
       }
-
-      file.filepath = file.filepath.replace(file.newFilename, fileName);
     });
   
     form.parse(req, async (err, fields, files) => {
@@ -138,11 +129,15 @@ const uploadFiles = async (
           .map(key => files[key] as File)
           .filter(file => RESERVED_FILE_EXTENSIONS.some(ext => file.originalFilename?.endsWith(ext)));
 
-          // try to parse ctx files
+          // try to parse ctx files, rename only if ok
           ctxFileInfos.forEach(item => {
             const o = JSON.parse(fs.readFileSync(item.filepath,'utf8'));
             if (!ContextSettings.Validate(o)) {
+              fs.unlinkSync(item.filepath);
               throw new Error("invalid json");
+            } else {
+              const ext = RESERVED_FILE_EXTENSIONS.find(ext => item.newFilename.endsWith(ext));
+              fs.renameSync(item.filepath, item.filepath.replace(item.newFilename, `${contextName}${ext}`));
             }
           });
 
@@ -223,7 +218,7 @@ const deleteVectors = async (
 
 const validateSecret = (namespace: string, secret: string) => {
   const admin_secret = process.env.ADMIN_SECRET;
-  return admin_secret && (NEXT_PUBLIC_READONLY_CONTEXTS().every(item => item != namespace) || secret == process.env.ADMIN_SECRET);
+  return admin_secret && (READONLY_CONTEXTS.every(item => item != namespace) || secret == process.env.ADMIN_SECRET);
 }
 
 

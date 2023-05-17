@@ -1,18 +1,19 @@
 import Layout from "@/components/layout";
-import { NEXT_PUBLIC_CONTEXTS, NEXT_PUBLIC_READONLY_CONTEXTS } from '@/config/clientSettings';
+import { UiContext } from "@/types/uiContext";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 
 
 export default function FilesPage() {
   const [files, setFileList] = useState<FileList | null>(null);
-  const [contextName, setNamespace] = useState<string>(NEXT_PUBLIC_CONTEXTS()[0]);
+  const [uiContext, setUiContext] = useState<UiContext>( { readonly: [], editable: [], providerName: '', providerUrl: '' });
+  const [contextName, setContextName] = useState<string>('');
   const [vectorCount, setVectorCount] = useState<number>(0);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const secretRef = useRef<HTMLInputElement | null>(null);
 
   const namespaceSelectionChanged = async (e: ChangeEvent<HTMLSelectElement>) => {
-    setNamespace(e.target.value);
+    setContextName(e.target.value);
     await countVectors(e.target.value);    
   }
 
@@ -127,7 +128,26 @@ export default function FilesPage() {
     }
   }
 
-  useEffect(() => { countVectors(contextName); }, [contextName]);
+  const getContexts = async () => {
+    const res = await fetch("/api/contexts", {    
+      method: "GET",
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    return await res.json() as UiContext;
+  }
+
+  useEffect(() => { 
+    countVectors(contextName); 
+  }, [contextName]);
+
+  useEffect(() => {   
+    getContexts().then(result => {
+      setUiContext(result);
+      setContextName(result.readonly[0]);
+    }); 
+  }, []);
 
   return (
     <>
@@ -136,7 +156,7 @@ export default function FilesPage() {
         <div className="flex flex-col">
           <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center mb-5">
             <select value={contextName} onChange={namespaceSelectionChanged}>
-            {NEXT_PUBLIC_CONTEXTS().map((namespace, index) => {
+            {[...uiContext.readonly, ...uiContext.editable].map((namespace, index) => {
               return(
                       <option key={`option${index}`} value={namespace}>
                         {namespace}
@@ -148,7 +168,7 @@ export default function FilesPage() {
           <div className="text-center mb-10">
             The {contextName} vector store contains {vectorCount} text blocks
           </div>
-          <div  style={ NEXT_PUBLIC_READONLY_CONTEXTS().some(item => item == contextName)  ? {} : { display: 'none' } }  className="text-center mb-10">
+          <div  style={ uiContext.readonly.some(item => item == contextName)  ? {} : { display: 'none' } }  className="text-center mb-10">
             Secret: <input ref={secretRef} name="file" type="password"/>
           </div>
           <div className="text-center mb-10">

@@ -1,5 +1,8 @@
+1. "Fehler" NEXT_PUBLIC.. Umgebungsvariablen werden im Docker-Container nicht aktualisiert
+-> Ursache next.js übernimmt process.env.NEXT_PUBLIC.. Werte zur build-Zeit und fügt sie als Konstanten in den Code ein
 
-Fehler mit "npm run dev" läuft alles
+
+2. Fehler mit "npm run dev" läuft alles
 
 Wenn als Docker container gibt's Fehler mit langchain "400 Bad request"
 

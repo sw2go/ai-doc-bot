@@ -9,20 +9,22 @@ import botIcon from 'public/bot-image.png'
 import ReactMarkdown from 'react-markdown';
 import LoadingDots from '@/components/ui/LoadingDots';
 import { Document } from 'langchain/document';
-import { NEXT_PUBLIC_CONTEXTS, NEXT_PUBLIC_PROVIDER_URL, NEXT_PUBLIC_PROVIDER_NAME } from '@/config/clientSettings';
+import { NEXT_PUBLIC_PROVIDER_URL, NEXT_PUBLIC_PROVIDER_NAME } from '@/config/buildtimeSettings';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { UiContext } from '@/types/uiContext';
 
 export default function ChatPage() {
   const [query, setQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [sourceDocs, setSourceDocs] = useState<Document[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [contextName, setNamespace] = useState<string>(NEXT_PUBLIC_CONTEXTS()[0]);
+  const [uiContext, setUiContext] = useState<UiContext>( { readonly: [], editable: [], providerName: '', providerUrl: '' });
+  const [contextName, setContextName] = useState<string>('');
   const [messageState, setMessageState] = useState<{
     messages: Message[];
     pending?: string;
@@ -165,14 +167,31 @@ export default function ChatPage() {
     }
   }, [chatMessages]);
 
+  const getContexts = async () => {
+    const res = await fetch("/api/contexts", {    
+      method: "GET",
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    return await res.json() as UiContext;
+  }  
+
+  useEffect(() => {   
+    getContexts().then(result => {
+      setUiContext(result);
+      setContextName(result.readonly[0]);
+    }); 
+  }, []);
+
   return (
     <>
       <Layout>
         <div className="mx-auto flex flex-col gap-4">
           <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center">
             <span className="mr-1">Chat mit</span> 
-            <select value={contextName} onChange={(e)=> {setNamespace(e.target.value)}}>
-              {NEXT_PUBLIC_CONTEXTS().map((namespace, index) => {
+            <select value={contextName} onChange={(e)=> {setContextName(e.target.value)}}>
+              {[...uiContext.readonly, ...uiContext.editable].map((namespace, index) => {
                 return(
                         <option key={`option-${index}`} value={namespace}>
                           {namespace}

@@ -1,5 +1,5 @@
 import { CONTEXT_FILE_EXTENSION, UPLOAD_FOLDER } from "@/config/serverSettings";
-import { Validator } from "jsonschema";
+import { Validator, ValidatorResult } from "jsonschema";
 import fs from 'fs';
 
 export class ContextSettings {
@@ -8,13 +8,33 @@ export class ContextSettings {
     
     try {
       const settings = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      console.log(settings);
-      return settings;
+
+      const v = new Validator();
+      let valid: ValidatorResult | null = v.validate(settings, BaseSchema);
+
+      if (valid.valid) {
+        const type = (settings as BaseContextSettings).type;
+        switch (type) {
+          case 'OpenAI-QA':
+            valid = v.validate(settings, QASchema);
+            break;
+          default:            
+            valid = null;    
+        }
+        if(valid == null) {
+          console.log(`${filePath} invalid type value: ${type}`);
+        } else if (!valid.valid) {
+          console.log(`${filePath} invalid json schema for type: ${type}`);
+        } else {
+          return settings;
+        }
+      } else {
+        console.log(`${filePath} invalid json schema (missing type field)`);
+      }
     } catch (error) {
-      console.log(error);
       console.log(`${filePath} file not found`);
     }
-
+    console.log(`take default QA`);
     return DefaultQAContext(namespace);
   }
 
@@ -78,6 +98,19 @@ export const DefaultQAContext = (namespace: string): QAContextSettings => {
     numberSource: 2,
     returnSource: true
   }  
+}
+
+const BaseSchema = {
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string"
+    },
+  },
+  "required": [
+    "type"
+  ]
 }
 
 const QASchema = {

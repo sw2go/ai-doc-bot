@@ -1,14 +1,14 @@
 import { pinecone } from '@/utils/pinecone-client';
 import { CustomPDFLoader } from '@/utils/customPDFLoader';
-import { NEXT_PUBLIC_CONTEXTS } from '@/config/clientSettings';
 import { PINECONE_INDEX_NAME } from '@/config/serverSettings';
 import { DirectoryLoader, TextLoader } from 'langchain/document_loaders';
 import { DocVectorStore } from '@/utils/docVectorStore';
+import { EDITABLE_CONTEXTS, READONLY_CONTEXTS } from '@/config/runtimeSettings';
 
 /* Name of directory to retrieve your files from */
 const filePath = 'docs';
 
-const INGEST_SCRIPT_NAMESPACE = NEXT_PUBLIC_CONTEXTS()[0];  // Default namespace is SUBJECT_NAME from environment
+const INGEST_SCRIPT_NAMESPACE = [... READONLY_CONTEXTS, ... EDITABLE_CONTEXTS ][0];
 
 /**
  * run when developping to ingest with all the txt and pdf files in the docs folder
