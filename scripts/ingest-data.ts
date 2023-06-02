@@ -3,12 +3,12 @@ import { CustomPDFLoader } from '@/utils/customPDFLoader';
 import { PINECONE_INDEX_NAME } from '@/config/serverSettings';
 import { DirectoryLoader, TextLoader } from 'langchain/document_loaders';
 import { DocVectorStore } from '@/utils/docVectorStore';
-import { EDITABLE_CONTEXTS, READONLY_CONTEXTS } from '@/config/runtimeSettings';
+import { PROTECTED_CONTEXTS } from '@/config/runtimeSettings';
 
 /* Name of directory to retrieve your files from */
 const filePath = 'docs';
 
-const INGEST_SCRIPT_NAMESPACE = [... READONLY_CONTEXTS, ... EDITABLE_CONTEXTS ][0];
+const INGEST_SCRIPT_NAMESPACE = [... PROTECTED_CONTEXTS ][0];
 
 /**
  * run when developping to ingest with all the txt and pdf files in the docs folder

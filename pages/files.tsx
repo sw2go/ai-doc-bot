@@ -1,24 +1,31 @@
 import Layout from "@/components/layout";
-import { UiContext } from "@/types/uiContext";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { API_URL } from "@/config/buildtimeSettings";
+import { ContextInfo, VectorInfo } from "@/types/api";
 
 
 export default function FilesPage() {
   const [files, setFileList] = useState<FileList | null>(null);
-  const [uiContext, setUiContext] = useState<UiContext>( { readonly: [], editable: [], providerName: '', providerUrl: '' });
+  const [uiContext, setUiContext] = useState<ContextInfo[]>([]);
   const [contextName, setContextName] = useState<string>('');
   const [vectorCount, setVectorCount] = useState<number>(0);
 
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputDocFilesRef = useRef<HTMLInputElement | null>(null);
+  const inputConfigFileRef = useRef<HTMLInputElement | null>(null);
   const secretRef = useRef<HTMLInputElement | null>(null);
+  const deleteRef = useRef<HTMLInputElement | null>(null);
 
   const namespaceSelectionChanged = async (e: ChangeEvent<HTMLSelectElement>) => {
     setContextName(e.target.value);
     await countVectors(e.target.value);    
   }
 
-  const openFileSelectDialog = () => {
-    inputRef.current?.click();
+  const openDocFilesSelectDialog = () => {
+    inputDocFilesRef.current?.click();
+  }
+
+  const openConfigFileSelectDialog = () => {
+    inputConfigFileRef.current?.click();
   }
 
   const filesSelectionChanged = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -35,26 +42,38 @@ export default function FilesPage() {
     }
   }  
 
-  const countVectors = async (contextName: string) => {
-    const res = await fetch("/api/files", {
-      method: "GET",
-      headers: {
-        'x-context-name': contextName
-      },
-    });
-    const { data, error }: {
-      data: {
-        before: number;
-        after: number;
-      } | null;
-      error: string | null;
-    } = await res.json();
+  const filesSelectionChanged2 = async (e: ChangeEvent<HTMLInputElement>) => {
+    const fileInput = e.target.files;
+    if (fileInput && fileInput.length > 0) {
+      setFileList(fileInput); 
+      /** immediately upload*/
+      await updateContextConfigFile(fileInput);
+      // reset current file input value to allow upload of same file again
+      e.target.value = '';
+    }
+  }  
 
-    if (error || !data) {
-      alert(error || "Sorry! something went wrong.");
-      return;
+  const countVectors = async (contextName: string) => {
+    if (contextName?.length > 0) {
+      const res = await fetch(`${API_URL}/contexts/${contextName}/vectors`, {
+        method: "GET",
+        headers: {
+          'x-context-name': contextName
+        },
+      });
+
+      if (res.ok) {
+        const info: VectorInfo = await res.json();
+        setVectorCount(info.vectorCount);
+        return;
+      } else {
+        const { error } = await res.json();
+        console.log(error);
+        alert(error);
+      }
+
     } else {
-      setVectorCount(data?.after as number);
+      setVectorCount(0);
     }
   }
 
@@ -68,122 +87,233 @@ export default function FilesPage() {
         formData.append(`file${i}`, file)
       }
 
-      const res = await fetch("/api/files", {
+      const res = await fetch(`${API_URL}/contexts/${contextName}/vectors`, {
         method: "POST",
         headers: {
-          'x-secret': secretRef.current?.value as string,
-          'x-context-name': contextName
+          'x-secret': secretRef.current?.value as string
         },
         body: formData,
       });
 
-      const { data, error }: {
-        data: {
-          before: number;
-          after: number;
-          files: string[];
-        } | null;
-        error: string | null;
-      } = await res.json();
-  
-      if (error || !data) {
-        alert(error || "Sorry! something went wrong.");
-        return;
+      if (res.ok) {
+        const info: VectorInfo = await res.json();
+        setVectorCount(info.vectorCount);        
+        alert(`${info.change} vectors(s) added`);
+      } else {
+        const { error } = await res.json();
+        console.log(error);
+        alert(error);
       }
+    } catch (error: any) {
+      console.error(error.message);
+      alert("Sorry! something went wrong.");
+    }
+  }
 
-      setVectorCount(data.after);
-      alert(data.files);
+  const clearVectors = async () => {
+    try {
+      const res = await fetch(`${API_URL}/contexts/${contextName}/vectors`, {    
+        method: "DELETE",
+        headers: {
+          'x-secret': secretRef.current?.value as string
+        }
+      });
   
-      console.log("File was uploaded successfully:", data);
+      if (res.ok) {
+        const info: VectorInfo = await res.json();
+        setVectorCount(info.vectorCount);
+        alert(`${-info.change} vectors(s) deleted`);
+      } else {
+        const { error } = await res.json();
+        console.log(error);
+        alert(error);
+      }
     } catch (error) {
       console.error(error);
       alert("Sorry! something went wrong.");
     }
   }
 
-  const clearVectors = async () => {
-    const res = await fetch("/api/files", {    
-      method: "DELETE",
-      headers: {
-        'x-secret': secretRef.current?.value as string,
-        'x-context-name': contextName
+  const updateContextConfigFile = async (fileList: FileList) => {
+    try {
+      let formData = new FormData();
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList.item(i) as File; 
+        formData.append(`file${i}`, file)
       }
-    });
 
-    const { data, error }: {
-      data: {
-        before: number;
-        after: number;
-        text: string;
-      } | null;
-      error: string | null;
-    } = await res.json();
+      const res = await fetch(`${API_URL}/contexts/${contextName}`, {
+        method: "PUT",
+        headers: {
+          'x-secret': secretRef.current?.value as string
+        },
+        body: formData,
+      });
 
-    if (error || !data) {
-      alert(error || "Sorry! something went wrong.");
-      return;
-    } else {
-      setVectorCount(data.after);
-      alert(data.text);
+      if (res.ok) {
+        alert("Config updated");
+      } else {
+        const { error } = await res.json();
+        console.log(error);
+        alert(error);
+      }           
+    } catch(error) {
+      console.log(error);
+      alert(error);
+    }
+  }
+
+  const addNewContext = async () => {
+    try {
+      const res = await fetch(`${API_URL}/contexts`, {
+        method: "POST",
+        headers: {
+          'x-secret': secretRef.current?.value as string,
+          'content-type': 'application/json' 
+        },
+        body: JSON.stringify({
+          name: deleteRef.current?.value as string,
+          mode: 'OpenAI-QA'
+        })
+      });
+
+      if (res.ok) {
+        updateContextDropdown();
+        alert("Context added");
+      } else {
+        const { error } = await res.json();
+        console.log(error);
+        alert(error);
+      }      
+    } catch(error) {
+      console.log(error);
+      alert(error);
+    }
+  }
+
+  const deleteContextConfigFile = async () => {
+    try {
+      const res = (deleteRef.current?.value == '*')
+      ? await fetch(`${API_URL}/contexts?type=2`, {
+        method: "DELETE",
+        headers: {
+          'x-secret': secretRef.current?.value as string
+        }
+      })
+      : await fetch(`${API_URL}/contexts/${deleteRef.current?.value}`, {
+        method: "DELETE",
+        headers: {
+          'x-secret': secretRef.current?.value as string
+        }
+      });
+
+      if (res.ok) {
+        updateContextDropdown();
+        alert("Context deleted");
+      } else {
+        const { error } = await res.json();
+        console.log(error);
+        alert(error);
+      }          
+    } catch(error) {
+      console.log(error);
+      alert(error);
     }
   }
 
   const getContexts = async () => {
-    const res = await fetch("/api/contexts", {    
+    const res = await fetch(`${API_URL}/contexts`, {    
       method: "GET",
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-context-name': 'toforcepreflight'
       }
     });
-    return await res.json() as UiContext;
+
+    if (res.ok) {
+      return await res.json() as ContextInfo[];
+    } else {
+      alert( JSON.stringify( await res.json()) )
+      return [];
+    }
   }
 
   useEffect(() => { 
     countVectors(contextName); 
   }, [contextName]);
 
-  useEffect(() => {   
+  useEffect(() => {  
+    updateContextDropdown(); 
+  }, []);
+
+  const updateContextDropdown = () => {   
     getContexts().then(result => {
       setUiContext(result);
-      setContextName(result.readonly[0]);
-    }); 
-  }, []);
+      if (result.length > 0) {
+        setContextName(result[0].name);
+      }      
+    }) 
+  }
 
   return (
     <>
       <Layout>
       <div>        
         <div className="flex flex-col">
-          <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center mb-5">
-            <select value={contextName} onChange={namespaceSelectionChanged}>
-            {[...uiContext.readonly, ...uiContext.editable].map((namespace, index) => {
-              return(
-                      <option key={`option${index}`} value={namespace}>
-                        {namespace}
-                      </option>
-                    );
-              })}
-            </select>
-          </h1>
-          <div className="text-center mb-10">
-            The {contextName} vector store contains {vectorCount} text blocks
+          <div className="">
+            <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center mb-5">
+              <select value={contextName} onChange={namespaceSelectionChanged}>
+              {uiContext.map((context, index) => {
+                return(
+                        <option key={`option${index}`} value={context.name}>
+                          {context.name}
+                        </option>
+                      );
+                })}
+              </select>
+            </h1>
+            <div className="text-center mb-10">
+              The {contextName} vector store contains {vectorCount} text blocks
+            </div>
+            <div  style={ uiContext.some(item => item.type == 1 && item.name == contextName)  ? {} : { display: 'none' } }  className="text-center mb-10">
+              Secret<input className="border-solid border-2 ml-2" ref={secretRef} name="file" type="password"/>
+            </div>
           </div>
-          <div  style={ uiContext.readonly.some(item => item == contextName)  ? {} : { display: 'none' } }  className="text-center mb-10">
-            Secret: <input ref={secretRef} name="file" type="password"/>
+          <div className="flex justify-center gap-5">
+            <div className="text-center">
+              <form action="">
+                <input ref={inputDocFilesRef} name="file" type="file" multiple accept="application/pdf,text/plain" style={{ display: 'none' }} onChange={filesSelectionChanged} />
+              </form>
+              <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={openDocFilesSelectDialog}>Add files to {contextName}</button>
+            </div>
+            <div className="text-center" >
+              <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={clearVectors}>Clear {contextName}</button>
+            </div>
           </div>
-          <div className="text-center mb-10">
-            <form action="">
-              <input ref={inputRef} name="file" type="file" multiple accept="application/pdf,text/plain" style={{ display: 'none' }} onChange={filesSelectionChanged} />
-            </form>
-            <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={openFileSelectDialog}>Add files to {contextName}</button>
+          <div className="flex justify-center gap-5 mt-10">
+            <div className="text-center">
+              <form action="">
+                <input ref={inputConfigFileRef} name="file" type="file" multiple accept="text/plain" style={{ display: 'none' }} onChange={filesSelectionChanged2} />
+              </form>
+              <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={openConfigFileSelectDialog}>Upload Config</button>
+            </div>
+            <div className="text-center">
+              <div className="bg-gray-200 hover:bg-gray-100 rounded p-2">
+              <a href= {`${API_URL}/contexts/${contextName}`} title="Down">Download Config</a>
+              </div>            
+            </div>
           </div>
-          <div className="text-center mb-10">
-            <span className="bg-gray-200 hover:bg-gray-100 rounded p-2">
-            <a href= {`api/files?context=${contextName}`} title="Down"   >Download Config</a>
-            </span>            
-          </div>
-          <div className="text-center ">
-            <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={clearVectors}>Clear {contextName}</button>
+          <div className="flex justify-center gap-5 mt-10">
+            <div className="text-center pt-2">
+              Context<input className="border-solid ml-2 border-2" ref={deleteRef} name="file"/>
+            </div>
+            <div className="text-center">
+              <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={addNewContext}>Add</button>
+            </div>
+            <div className="text-center">
+              <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={deleteContextConfigFile}>Delete</button>
+            </div>
           </div>
         </div>
       </div>

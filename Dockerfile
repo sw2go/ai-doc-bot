@@ -36,7 +36,11 @@ EXPOSE 3000
 
 ENV PORT 3000
 
-CMD ["npm", "start"]
+# At container start up, run the system-shell
+# when missing, create required folders (reason: home is mounted as volume)
+# then execute the application (keeping the same process)
+ENTRYPOINT ["/bin/sh", "-c", "mkdir -p ~/ctx && mkdir -p ~/log && exec npm start"]
+
 
 
 

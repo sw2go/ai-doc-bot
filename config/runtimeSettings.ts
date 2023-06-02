@@ -1,4 +1,4 @@
-const READONLY_CONTEXTS =  process.env.READONLY_CONTEXTS ? process.env.READONLY_CONTEXTS.split(';') : [ 'MyTopic'];
-const EDITABLE_CONTEXTS =  process.env.EDITABLE_CONTEXTS ? process.env.EDITABLE_CONTEXTS.split(';') : [ 'Test']
+const PROTECTED_CONTEXTS =  process.env.PROTECTED_CONTEXTS ? process.env.PROTECTED_CONTEXTS.split(';') : [ 'MyTopic'];
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(';') : [ 'https://www.google.com', 'https://www.sbb.ch'];
 
-export { READONLY_CONTEXTS, EDITABLE_CONTEXTS }
+export { PROTECTED_CONTEXTS, ALLOWED_ORIGINS }

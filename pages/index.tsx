@@ -9,22 +9,23 @@ import botIcon from 'public/bot-image.png'
 import ReactMarkdown from 'react-markdown';
 import LoadingDots from '@/components/ui/LoadingDots';
 import { Document } from 'langchain/document';
-import { NEXT_PUBLIC_PROVIDER_URL, NEXT_PUBLIC_PROVIDER_NAME } from '@/config/buildtimeSettings';
+import { NEXT_PUBLIC_PROVIDER_URL, NEXT_PUBLIC_PROVIDER_NAME, API_URL } from '@/config/buildtimeSettings';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { UiContext } from '@/types/uiContext';
+import { ContextInfo, Chat } from '@/types/api';
 
 export default function ChatPage() {
   const [query, setQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [sourceDocs, setSourceDocs] = useState<Document[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [uiContext, setUiContext] = useState<UiContext>( { readonly: [], editable: [], providerName: '', providerUrl: '' });
+  const [uiContext, setUiContext] = useState<ContextInfo[]>([]);
   const [contextName, setContextName] = useState<string>('');
+  const [abortController, setAbortController] = useState<AbortController>();
   const [messageState, setMessageState] = useState<{
     messages: Message[];
     pending?: string;
@@ -49,6 +50,13 @@ export default function ChatPage() {
   useEffect(() => {
     textAreaRef.current?.focus();
   }, []);
+
+  const abortAnswer = () => {
+    if (abortController) {
+      console.log("abort");
+      abortController.abort();
+    }
+  };
 
   //handle form submission
   async function handleSubmit(e: any) {
@@ -80,20 +88,26 @@ export default function ChatPage() {
     setMessageState((state) => ({ ...state, pending: '' }));
 
     const ctrl = new AbortController();
+    setAbortController(ctrl);
 
     try {
-      fetchEventSource('/api/chat', {
+      fetchEventSource(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-context-name': contextName
         },
         body: JSON.stringify({
+          contextName,
           question,
           history,
+          promptId: undefined,
+          promptTemperature: undefined,
+          maxTokens: undefined
         }),
         signal: ctrl.signal,
-        onmessage: (event) => {
+        onclose: () => {  console.log("onklose")    },
+        onerror: (err: any) => { throw new Error(err) },  // besser machen damit wenn context fehlt der chat sagt, dass context fehlt 
+        onmessage: (event) => {          
           if (event.data === '[DONE]') {
             setMessageState((state) => ({
               history: [...state.history, [question, state.pending ?? '']],
@@ -168,19 +182,27 @@ export default function ChatPage() {
   }, [chatMessages]);
 
   const getContexts = async () => {
-    const res = await fetch("/api/contexts", {    
+    const res = await fetch(`${API_URL}/contexts`, {    
       method: "GET",
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-context-name': 'toforcepreflight'
       }
     });
-    return await res.json() as UiContext;
+    if (res.ok) {
+      return await res.json() as ContextInfo[];
+    } else {
+      alert( JSON.stringify( await res.json()) )
+      return [];
+    }
   }  
 
   useEffect(() => {   
     getContexts().then(result => {
       setUiContext(result);
-      setContextName(result.readonly[0]);
+      if (result.length > 0) {
+        setContextName(result[0].name);
+      }      
     }); 
   }, []);
 
@@ -191,10 +213,10 @@ export default function ChatPage() {
           <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center">
             <span className="mr-1">Chat mit</span> 
             <select value={contextName} onChange={(e)=> {setContextName(e.target.value)}}>
-              {[...uiContext.readonly, ...uiContext.editable].map((namespace, index) => {
+              {uiContext.map((context, index) => {
                 return(
-                        <option key={`option-${index}`} value={namespace}>
-                          {namespace}
+                        <option key={`option-${index}`} value={context.name}>
+                          {context.name}
                         </option>
                       );
               })}
@@ -214,6 +236,7 @@ export default function ChatPage() {
                         width="40"
                         height="40"
                         className={styles.boticon}
+                        onClick={abortAnswer}
                         priority
                       />
                     );

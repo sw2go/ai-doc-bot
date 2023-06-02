@@ -1,100 +1,137 @@
-import { CONTEXT_FILE_EXTENSION, UPLOAD_FOLDER } from "@/config/serverSettings";
+import { CONTEXT_FILE_EXTENSION, CTX_DIR } from "@/config/serverSettings";
 import { Validator, ValidatorResult } from "jsonschema";
 import fs from 'fs';
+import { PROTECTED_CONTEXTS } from "@/config/runtimeSettings";
 
 export class ContextSettings {
-  public static Create(namespace: string): BaseContextSettings {
-    const filePath = `${UPLOAD_FOLDER}/${namespace}${CONTEXT_FILE_EXTENSION}`;
-    
-    try {
-      const settings = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
-      const v = new Validator();
-      let valid: ValidatorResult | null = v.validate(settings, BaseSchema);
+  public static Add(contextName: string, mode: string) {
 
-      if (valid.valid) {
-        const type = (settings as BaseContextSettings).type;
-        switch (type) {
-          case 'OpenAI-QA':
-            valid = v.validate(settings, QASchema);
-            break;
-          default:            
-            valid = null;    
-        }
-        if(valid == null) {
-          console.log(`${filePath} invalid type value: ${type}`);
-        } else if (!valid.valid) {
-          console.log(`${filePath} invalid json schema for type: ${type}`);
-        } else {
-          return settings;
-        }
-      } else {
-        console.log(`${filePath} invalid json schema (missing type field)`);
+    const filePath = `${CTX_DIR}/${contextName}${CONTEXT_FILE_EXTENSION}`;
+
+    if (contextName?.length > 0) {
+      if (fs.existsSync(filePath)) {
+        throw(new Error('Context already exists'));
       }
-    } catch (error) {
-      console.log(`${filePath} file not found`);
+  
+      const settings = { contextName: contextName, mode: mode };
+  
+      if (!this.ValidateBaseSchema(settings)) {
+        throw(new Error('Invalid type')); 
+      }
+  
+      if ((settings as BaseContextSettings).mode == 'OpenAI-QA') {
+        const text = JSON.stringify(DefaultQAContext(settings.contextName), null, 2);
+        fs.writeFileSync(filePath, text, 'utf8');
+      } else {
+        throw(new Error('Not implemented')); 
+      }
+    } else {
+      throw(new Error('Invalid contextName'));
     }
-    console.log(`take default QA`);
-    return DefaultQAContext(namespace);
+  }
+
+  public static Check(contextName: string) {
+
+    const filePath = `${CTX_DIR}/${contextName}${CONTEXT_FILE_EXTENSION}`;
+
+    if (!fs.existsSync(filePath)) {
+      if (PROTECTED_CONTEXTS.some(x => x == contextName)) {
+        this.Add(contextName,'OpenAI-QA');   // if READONLY_CONTEXT Config is missing create it .. 
+      } else {
+        throw(new Error('Context is missing'));       // 
+      }
+    }
+  }
+
+  public static Get(contextName: string): BaseContextSettings {
+
+    const filePath = `${CTX_DIR}/${contextName}${CONTEXT_FILE_EXTENSION}`;
+
+    this.Check(contextName);
+    
+    const settings = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+    if (!this.Validate(settings)) {
+      throw(new Error('Invalid context settings'));
+    }
+    return settings as BaseContextSettings;
   }
 
   public static Validate(settings: any): boolean {
     const v = new Validator();
-    const valid = v.validate(settings, QASchema);
+    let valid: ValidatorResult = v.validate(settings, BaseSchema);
+    if (valid.valid) {
+      switch((settings as BaseContextSettings).mode) {
+        case 'OpenAI-QA':
+          valid = v.validate(settings, QASchema);
+          break;
+        
+          default:
+            throw new Error('not implemented');
+      }
+    }
+    return valid.valid;
+  }
+
+  public static ValidateBaseSchema(settings: any): boolean {
+    const v = new Validator();
+    const valid = v.validate(settings, BaseSchema);
     return valid.valid;
   }
 }
 
 
-
-
 export interface BaseContextSettings {
-  type: 'OpenAI-QA' | 'Other' | undefined;
+  mode: 'OpenAI-QA' | 'Other' | undefined;    // when extending type, extend BaseSchema, DefaultXXXContext
   contextName: string;
   modelName: string;
   maxTokens: number;
   promptTemperature: number;
-  prompt: string[];
+  prompts: string[][];
 }
 
 
 export interface QAContextSettings extends BaseContextSettings {
   prepromptTemperature: number;
-  preprompt: string[];
+  preprompts: string[][];
   numberSource: number;
   returnSource: boolean;
 }
 
 export const DefaultQAContext = (namespace: string): QAContextSettings => {
   return {
-    type: 'OpenAI-QA',
+    mode: 'OpenAI-QA',
     contextName: namespace,
     modelName: 'gpt-3.5-turbo',
     maxTokens: 250,
     promptTemperature: 0.5,
-    prompt: [
-      `Du bist ein KI-Assistent. Du hilfst beim Erstellen von Marketing Texten für Kunden und Interessenten von ${namespace}.`,  
-      `Im Kontext bekommst du einzelne Texte aus einem längeren Dokument das von ${namespace} geschrieben ist.`,
-      `Beantworte die Frage konversationsbasiert und verwende dazu den bereitgestellten Kontext und andere Quellen zu den Themen IT und Individualsoftwareentwicklung.`,
-      `Bitte erfinde keine Hyperlinks.`,
-      ``,
-      `Frage: {question}`,
-      `=========`,
-      `{context}`,
-      `=========`,
-      `Antworte in Markdown:`
+    prompts: [
+      [
+        `Du bist ein KI-Assistent. Du hilfst beim Erstellen von Marketing Texten für Kunden und Interessenten von ${namespace}.`,  
+        `Im Kontext bekommst du einzelne Texte aus einem längeren Dokument das von ${namespace} geschrieben ist.`,
+        `Beantworte die Frage konversationsbasiert und verwende dazu den bereitgestellten Kontext und andere Quellen zu den Themen IT und Individualsoftwareentwicklung.`,
+        `Bitte erfinde keine Hyperlinks.`,
+        ``,
+        `Frage: {question}`,
+        `=========`,
+        `{context}`,
+        `=========`,
+        `Antworte in Markdown:`
+      ]
     ],
 
     prepromptTemperature: 0.5,
-    preprompt: [
-      `Gegeben ist die folgende Unterhaltung und eine Folgefrage. Formuliere die Folgefrage um, so dass sie eine eigenständige Frage wird.`,
-      ``,
-      `Chat-Verlauf:`,
-      `{chat_history}`,
-      `Folgefrage: {question}`,
-      `Eigenständige Frage:`
+    preprompts: [
+      [
+        `Gegeben ist die folgende Unterhaltung und eine Folgefrage. Formuliere die Folgefrage um, so dass sie eine eigenständige Frage wird.`,
+        ``,
+        `Chat-Verlauf:`,
+        `{chat_history}`,
+        `Folgefrage: {question}`,
+        `Eigenständige Frage:`
+      ]
     ],
-
     numberSource: 2,
     returnSource: true
   }  
@@ -104,12 +141,13 @@ const BaseSchema = {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "type": {
-      "type": "string"
+    "mode": {
+      "type": "string",
+      "pattern": /^(OpenAI-QA|Other)$/
     },
   },
   "required": [
-    "type"
+    "mode"
   ]
 }
 
@@ -117,7 +155,7 @@ const QASchema = {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "type": {
+    "mode": {
       "type": "string"
     },
     "contextName": {
@@ -132,19 +170,25 @@ const QASchema = {
     "promptTemperature": {
       "type": "number"
     },
-    "prompt": {
+    "prompts": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       }
     },
     "prepromptTemperature": {
       "type": "number"
     },
-    "preprompt": {
+    "preprompts": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       }
     },
     "numberSource": {
@@ -155,14 +199,14 @@ const QASchema = {
     }
   },
   "required": [
-    "type",
+    "mode",
     "contextName",
     "modelName",
     "maxTokens",
     "promptTemperature",
-    "prompt",
+    "prompts",
     "prepromptTemperature",
-    "preprompt",
+    "preprompts",
     "numberSource",
     "returnSource"
   ]

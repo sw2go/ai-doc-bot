@@ -1,8 +1,19 @@
-1. "Fehler" NEXT_PUBLIC.. Umgebungsvariablen werden im Docker-Container nicht aktualisiert
+1. CORS Debugging
+-  Debug your backend on http://localhost:3000
+-  Open Chrome and go any site, we take: https://www.google.com, 
+-  Then Open Dev-Tools and open Console, any javascript API fetch to localhost will be with origin: https://www.google.com 
+-  or try, enter a Query to the local API: fetch("http://localhost:3000/api/contexts") and see CORS error, 
+   then adjust server config to allow this origin
+-  The OPTIONS Method is automatically called by the Browser whenever the origin does not match the fetch-method's host-url. 
+
+
+
+
+2. "Fehler" NEXT_PUBLIC.. Umgebungsvariablen werden im Docker-Container nicht aktualisiert
 -> Ursache next.js übernimmt process.env.NEXT_PUBLIC.. Werte zur build-Zeit und fügt sie als Konstanten in den Code ein
 
 
-2. Fehler mit "npm run dev" läuft alles
+3. Fehler mit "npm run dev" läuft alles
 
 Wenn als Docker container gibt's Fehler mit langchain "400 Bad request"
 

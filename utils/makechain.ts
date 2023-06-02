@@ -11,6 +11,7 @@ import { OpenAIEmbeddings } from 'langchain/embeddings';
 
 export const makeChain = async (
   contextSettings: QAContextSettings,
+  promptId: number | undefined,
   onTokenStream?: (token: string) => void,
 ) => {
   const index = pinecone.Index(PINECONE_INDEX_NAME);
@@ -25,9 +26,23 @@ export const makeChain = async (
     },
   );
 
+  const getPrompt = (startId: number | undefined, prompts: string[][]) => {
+    let pid = (startId && startId >= 0) ? (prompts.length > startId) ? startId : prompts.length -1 : 0;
+    while(pid > 0 && prompts[pid].length == 0) {
+      pid--;
+    }
+    console.log('using promptId:', pid);
+    return prompts[pid].join('\n');
+  }
+
+  const prePrompt = getPrompt(promptId, contextSettings.preprompts);
+  const prompt = getPrompt(promptId, contextSettings.prompts);
+
   const questionGenerator = new LLMChain({
-    llm: new OpenAIChat({ temperature: contextSettings.prepromptTemperature }),
-    prompt: PromptTemplate.fromTemplate(contextSettings.preprompt.join('\n')),
+    llm: new OpenAIChat({ 
+      temperature: contextSettings.prepromptTemperature,
+    }),
+    prompt: PromptTemplate.fromTemplate(prePrompt),
   });
 
   const docChain = loadQAChain(
@@ -44,7 +59,7 @@ export const makeChain = async (
           })
         : undefined,
     }),
-    { prompt: PromptTemplate.fromTemplate(contextSettings.prompt.join('\n')) },  // 'normal' prompt
+    { prompt: PromptTemplate.fromTemplate(prompt) },  // 'normal' prompt
   );
 
   return new ChatVectorDBQAChain({
