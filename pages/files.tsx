@@ -56,10 +56,7 @@ export default function FilesPage() {
   const countVectors = async (contextName: string) => {
     if (contextName?.length > 0) {
       const res = await fetch(`${API_URL}/contexts/${contextName}/vectors`, {
-        method: "GET",
-        headers: {
-          'x-context-name': contextName
-        },
+        method: "GET"
       });
 
       if (res.ok) {
@@ -169,8 +166,9 @@ export default function FilesPage() {
       const res = await fetch(`${API_URL}/contexts`, {
         method: "POST",
         headers: {
-          'x-secret': secretRef.current?.value as string,
-          'content-type': 'application/json' 
+          'content-type': 'application/json',
+          'x-secret': secretRef.current?.value as string
+          
         },
         body: JSON.stringify({
           name: deleteRef.current?.value as string,
@@ -226,8 +224,7 @@ export default function FilesPage() {
     const res = await fetch(`${API_URL}/contexts`, {    
       method: "GET",
       headers: {
-        'Content-Type': 'application/json',
-        'x-context-name': 'toforcepreflight'
+        'Content-Type': 'application/json'
       }
     });
 

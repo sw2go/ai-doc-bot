@@ -185,8 +185,7 @@ export default function ChatPage() {
     const res = await fetch(`${API_URL}/contexts`, {    
       method: "GET",
       headers: {
-        'Content-Type': 'application/json',
-        'x-context-name': 'toforcepreflight'
+        'Content-Type': 'application/json'
       }
     });
     if (res.ok) {

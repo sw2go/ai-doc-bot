@@ -12,8 +12,6 @@ export default async function handler(
   req: NextApiRequest, 
   res: NextApiResponse,  
   ) {
-  console.log(req.headers);
-
   switch(req.method?.toLowerCase()) {
     case 'get':
       return await getVectorsCount(req, res);
@@ -77,7 +75,8 @@ const addVectors = async (
   
     // rename uploading QA-Docs files to it's original name (to have meaningful sourcefile names when displaying references)
     form.on('fileBegin', (name: string, file: File) => {
-      file.filepath = file.filepath.replace(file.newFilename, file.originalFilename as string);      
+      file.filepath = file.filepath.replace(file.newFilename, file.originalFilename as string);     
+      console.log('up', file.filepath);
     });
 
     const { fields, files } = await parseForm(req, form);
@@ -88,9 +87,6 @@ const addVectors = async (
     // add docfiles to vector store
     const vectorStore = new DocVectorStore(pinecone.Index(PINECONE_INDEX_NAME));        
     const { before, after } = await vectorStore.add(contextName, fileInfos.map(item => item.filepath));
-
-    // remove docFiles from file-system
-    fileInfos.forEach(item => fs.unlinkSync(item.filepath));
 
     const info: VectorInfo = {
       change: after - before,
@@ -104,7 +100,7 @@ const addVectors = async (
       error: error.message
     });
   } finally {
-    if (fileInfos) {
+    if (fileInfos) {  // cleanup: remove all uploaded files
       fileInfos.forEach(item => fs.unlinkSync(item.filepath));
     }
   }
