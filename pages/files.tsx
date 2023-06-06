@@ -1,7 +1,7 @@
 import Layout from "@/components/layout";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { API_URL } from "@/config/buildtimeSettings";
-import { ContextInfo, VectorInfo } from "@/types/api";
+import { ContextInfo, OneTimeKey, VectorInfo } from "@/types/api";
 
 
 export default function FilesPage() {
@@ -9,11 +9,13 @@ export default function FilesPage() {
   const [uiContext, setUiContext] = useState<ContextInfo[]>([]);
   const [contextName, setContextName] = useState<string>('');
   const [vectorCount, setVectorCount] = useState<number>(0);
+  const [oneTimeKey, setOneTimeKey] = useState<string>('');
 
   const inputDocFilesRef = useRef<HTMLInputElement | null>(null);
   const inputConfigFileRef = useRef<HTMLInputElement | null>(null);
   const secretRef = useRef<HTMLInputElement | null>(null);
   const deleteRef = useRef<HTMLInputElement | null>(null);
+  const logDownloadRef = useRef<HTMLAnchorElement | null>(null);
 
   const namespaceSelectionChanged = async (e: ChangeEvent<HTMLSelectElement>) => {
     setContextName(e.target.value);
@@ -236,6 +238,23 @@ export default function FilesPage() {
     }
   }
 
+  const downLoadLog = async () => {
+    const res = await fetch(`${API_URL}/logs`, {    
+      method: "POST",
+      headers: {
+        'x-secret': secretRef.current?.value as string
+      }
+    });
+
+    if (res.ok) {
+      const otk = await res.json() as OneTimeKey;
+      setOneTimeKey(otk.key);
+      setTimeout(() => logDownloadRef.current?.click(), 0);
+    } else {
+      alert( JSON.stringify( await res.json()) )
+    }
+  }
+
   useEffect(() => { 
     countVectors(contextName); 
   }, [contextName]);
@@ -310,6 +329,12 @@ export default function FilesPage() {
             </div>
             <div className="text-center">
               <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={deleteContextConfigFile}>Delete</button>
+            </div>
+          </div>
+          <div className="flex justify-center gap-5 mt-10">
+          <div className="text-center">
+              <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={downLoadLog}>Download Log</button>
+              <a ref={logDownloadRef} style={{ display: 'none' }} href= {`${API_URL}/logs?key=${oneTimeKey}`} title="Down">Download Log</a>
             </div>
           </div>
         </div>

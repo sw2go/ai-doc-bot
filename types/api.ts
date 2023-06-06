@@ -1,4 +1,5 @@
 export type Chat = { 
+  session: string,
   contextName: string, 
   question: string, 
   history: [string, string][],
@@ -20,4 +21,8 @@ export type ContextInit = {
 export type VectorInfo = {
   change: number;
   vectorCount: number;
+}
+
+export type OneTimeKey = {
+  key: string;
 }

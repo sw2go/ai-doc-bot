@@ -3,6 +3,9 @@ import { makeChain } from '@/utils/makechain';
 import { BaseContextSettings, ContextSettings, QAContextSettings } from '@/utils/contextSettings';
 import { BaseChain } from 'langchain/chains';
 import { Chat } from '@/types/api';
+import { createArrayCsvWriter, createObjectCsvWriter } from 'csv-writer'
+import { WORKING_DIR } from '@/config/serverSettings';
+import { CsvLog } from '@/utils/csvLog';
 
 export default async function handler(
   req: NextApiRequest,
@@ -30,7 +33,6 @@ export default async function handler(
     
     const sanitizedQuestion = chat.question.trim().replaceAll('\n', ' ');  // OpenAI recommends replacing newlines with spaces for best results
 
-    
     let chain: BaseChain | null = null;
     const context = ContextSettings.Get(chat.contextName);
 
@@ -38,9 +40,17 @@ export default async function handler(
 
       const qaContextSettings = context as QAContextSettings;
       qaContextSettings.contextName = chat.contextName;
-      if (chat.maxTokens) { qaContextSettings.maxTokens = chat.maxTokens;}
-      if (chat.promptTemperature) { qaContextSettings.promptTemperature = chat.promptTemperature;}
-  
+      if (chat.maxTokens) { 
+        qaContextSettings.maxTokens = chat.maxTokens;
+      } else {
+        chat.maxTokens = qaContextSettings.maxTokens;
+      }
+      if (chat.promptTemperature) { 
+        qaContextSettings.promptTemperature = chat.promptTemperature;
+      } else {
+        chat.promptTemperature = qaContextSettings.promptTemperature;
+      }
+
       //create chain
       chain = await makeChain(qaContextSettings, chat.promptId, (token: string) => {
         sendData(JSON.stringify({ data: token }));
@@ -56,6 +66,19 @@ export default async function handler(
     console.log('question: ', sanitizedQuestion);
     console.log('response: ', response?.text);
     sendData(JSON.stringify({ sourceDocs: response?.sourceDocuments }));
+
+    await CsvLog.append(
+      req.headers['user-agent'] || '',
+      chat.session || '',
+      chat.contextName,
+      chat.maxTokens || 0,
+      chat.promptTemperature || 0,
+      (chat.history || []).length,
+      chat.promptId || 0,
+      sanitizedQuestion,
+      response?.text,
+      context
+    );
 
   } catch (error: any) {
     sendData(JSON.stringify({ data: `Oops - something went wrong!\n\nException: ${error.message}\n\nPlease reload the page and try again.`}));
