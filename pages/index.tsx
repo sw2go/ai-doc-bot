@@ -17,15 +17,20 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { ContextInfo, Chat } from '@/types/api';
+import useLocalStorage from '@/utils/useLocalStorage';
 
 export default function ChatPage() {
+  const checkboxRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [sourceDocs, setSourceDocs] = useState<Document[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uiContext, setUiContext] = useState<ContextInfo[]>([]);
-  const [contextName, setContextName] = useState<string>('');
+  
   const [abortController, setAbortController] = useState<AbortController>();
+  const [currentContext, setCurrentContext] = useLocalStorage('currentContext', '');
+  const [session, setSession] = useLocalStorage('session', '');
+
   const [messageState, setMessageState] = useState<{
     messages: Message[];
     pending?: string;
@@ -63,6 +68,10 @@ export default function ChatPage() {
   async function handleSubmit(e: any) {
     e.preventDefault();
 
+    if (session.length == 0) {
+      setSession((Date.now() % 630388217).toString());
+    }
+
     setError(null);
 
     if (!query) {
@@ -92,19 +101,20 @@ export default function ChatPage() {
     setAbortController(ctrl);
 
     try {
+
+      const chat: Chat = {
+        session: session,
+        contextName: currentContext,
+        question,
+        history: checkboxRef.current?.checked ? history : []
+      }
+
       fetchEventSource(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          contextName,
-          question,
-          history,
-          promptId: undefined,
-          promptTemperature: undefined,
-          maxTokens: undefined
-        }),
+        body: JSON.stringify(chat),
         signal: ctrl.signal,
         onclose: () => {  console.log("onklose")    },
         onerror: (err: any) => { throw new Error(err) },  // ohne throw -> retry endlessly  
@@ -198,7 +208,7 @@ export default function ChatPage() {
     getContexts().then(result => {
       setUiContext(result);
       if (result.length > 0) {
-        setContextName(result[0].name);
+        //setContextName(result.some(x => x.name == currentContext) ? currentContext : result[0].name);
       }      
     }); 
   }, []); // intentionally no dependencies surveillance -> []  ( called only initially on client side )
@@ -207,9 +217,12 @@ export default function ChatPage() {
     <>
       <Layout>
         <div className="mx-auto flex flex-col gap-4">
-          <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center">
+          <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter flex items-center justify-center  ">
             <span className="mr-1">Chat mit</span> 
-            <select value={contextName} onChange={(e)=> {setContextName(e.target.value)}}>
+            <select value={currentContext} onChange={(e)=> {
+              //setContextName(e.target.value);
+              setCurrentContext(e.target.value);
+              }}>
               {uiContext.map((context, index) => {
                 return(
                         <option key={`option-${index}`} value={context.name}>
@@ -218,7 +231,9 @@ export default function ChatPage() {
                       );
               })}
             </select>
+            <div><span className='text-base font-normal ml-5 mr-2 '>Kontext berücksichtigen</span><input ref={checkboxRef} className='justify-self-end' type='checkbox' id='bla' />   </div>                               
           </h1>
+
           <main className={styles.main}>
             <div className={styles.cloud}>
               <div ref={messageListRef} className={styles.messagelist}>

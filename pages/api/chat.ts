@@ -58,7 +58,7 @@ export default async function handler(
             return;
           case TokenSource.QuestionGenerator:
             generatedQuestion += token;
-            sendData(JSON.stringify({ data: `**Im Kontext des Chat-Verlaufs verstehe die Frage so:** ${token}\n\n\n` }));
+            sendData(JSON.stringify({ data: `**Im Kontext des Chat-Verlaufs verstehe ich die Frage so:** ${token}\n\n\n` }));
             return;
         }      
       });

@@ -71,7 +71,7 @@ const createOneTimeKey = async (
     if (!fs.existsSync(CsvLog.filePath)) {
       throw new Error('no log');
     }
-
+    
     const oneTimeKey = (Date.now() % 179424673).toString(); // big prime
 
     fs.renameSync(CsvLog.filePath, CsvLog.downloadPath(oneTimeKey));

@@ -2,11 +2,13 @@ import Layout from "@/components/layout";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { API_URL } from "@/config/buildtimeSettings";
 import { ContextInfo, OneTimeKey, VectorInfo } from "@/types/api";
+import useLocalStorage from "@/utils/useLocalStorage";
 
 
 export default function FilesPage() {
   const [files, setFileList] = useState<FileList | null>(null);
   const [uiContext, setUiContext] = useState<ContextInfo[]>([]);
+  const [currentContext, setCurrentContext] = useLocalStorage('currentContext', '');
   const [contextName, setContextName] = useState<string>('');
   const [vectorCount, setVectorCount] = useState<number>(0);
   const [oneTimeKey, setOneTimeKey] = useState<string>('');
@@ -19,6 +21,7 @@ export default function FilesPage() {
 
   const namespaceSelectionChanged = async (e: ChangeEvent<HTMLSelectElement>) => {
     setContextName(e.target.value);
+    setCurrentContext(e.target.value);
     await countVectors(e.target.value);    
   }
 
@@ -260,9 +263,13 @@ export default function FilesPage() {
   const updateContextDropdown = () => {   
     getContexts().then(result => {
       setUiContext(result);
-      if (result.length > 0) {
-        setContextName(result[0].name);
-      }      
+      if (!result.some(x => x.name == currentContext)) {
+        const defaultContextName = result.length > 0 ? result[0].name : '';
+        setContextName(defaultContextName);
+        setCurrentContext(defaultContextName); 
+      } else if (contextName != currentContext) {
+        setContextName(currentContext);
+      }
     }) 
   }
 
