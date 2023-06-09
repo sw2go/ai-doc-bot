@@ -14,17 +14,18 @@ export class CsvLog {
     return createObjectCsvWriter({
       path: CsvLog.filePath,
       header: [
-        {id: 'timestamp',   title: 'TIME' },
-        {id: 'userAgent',   title: 'AGENT' },
-        {id: 'session',     title: 'SESSION' },
-        {id: 'contextName', title: 'CONTEXT' },        
-        {id: 'maxTokens',   title: 'MAXTOK' },        
-        {id: 'promptTemp',  title: 'TEMP' },
-        {id: 'history',     title: 'HIST' },
-        {id: 'promptId',    title: 'PROMPT' },
-        {id: 'question',    title: 'QUESTION' },
-        {id: 'response',    title: 'RESPONSE' },
-        {id: 'settings',    title: 'SETTINGS' },
+        {id: 'timestamp',          title: 'TIME' },
+        {id: 'userAgent',          title: 'AGENT' },
+        {id: 'session',            title: 'SESSION' },
+        {id: 'contextName',        title: 'CONTEXT' },        
+        {id: 'maxTokens',          title: 'MAXTOKENS' },        
+        {id: 'promptTemp',         title: 'TEMPERATURE' },
+        {id: 'history',            title: 'HISTORY' },
+        {id: 'promptId',           title: 'PROMPTID' },
+        {id: 'question',           title: 'QUESTION' },
+        {id: 'generatedQuestion',  title: 'GENERATED_QUESTION' },
+        {id: 'response',           title: 'RESPONSE' },
+        {id: 'settings',           title: 'SETTINGS' },
       ],
       fieldDelimiter: ';',
       append: append
@@ -40,6 +41,7 @@ export class CsvLog {
     history: number, 
     promptId: number,  
     question: string,
+    generatedQuestion: string,
     response: string,
     settings: BaseContextSettings
     ) {
@@ -55,6 +57,7 @@ export class CsvLog {
           history,
           promptId,
           question,
+          generatedQuestion,
           response,
           settings: JSON.stringify(settings, null, 2)
         }

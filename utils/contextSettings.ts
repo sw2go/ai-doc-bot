@@ -122,9 +122,14 @@ export const DefaultQAContext = (namespace: string): QAContextSettings => {
     ],
 
     prepromptTemperature: 0.5,
+
+    // alter preprompt: `Gegeben ist die folgende Unterhaltung und eine Folgefrage. Formuliere die Folgefrage um, so dass sie eine eigenständige Frage wird.`
+
+
     preprompts: [
       [
-        `Gegeben ist die folgende Unterhaltung und eine Folgefrage. Formuliere die Folgefrage um, so dass sie eine eigenständige Frage wird.`,
+        `Gegeben ist der Chat-Verlauf und eine Folgefrage.`,
+        `Formuliere die Folgefrage als eigenständige Frage, die berücksichtigt, ob der Chat-Verlauf für die Antwort relevant ist oder nicht und so, dass sie auch ohne den Chat-Verlauf verstanden wird.`,
         ``,
         `Chat-Verlauf:`,
         `{chat_history}`,

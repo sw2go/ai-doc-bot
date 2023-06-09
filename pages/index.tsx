@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/layout';
 import styles from '@/styles/Home.module.css';
 import { Message } from '@/types/chat';
@@ -47,6 +47,7 @@ export default function ChatPage() {
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Effects only run on the client, initially set focus to the text input 
   useEffect(() => {
     textAreaRef.current?.focus();
   }, []);
@@ -106,7 +107,7 @@ export default function ChatPage() {
         }),
         signal: ctrl.signal,
         onclose: () => {  console.log("onklose")    },
-        onerror: (err: any) => { throw new Error(err) },  // besser machen damit wenn context fehlt der chat sagt, dass context fehlt 
+        onerror: (err: any) => { throw new Error(err) },  // ohne throw -> retry endlessly  
         onmessage: (event) => {          
           if (event.data === '[DONE]') {
             setMessageState((state) => ({
@@ -148,16 +149,13 @@ export default function ChatPage() {
   }
 
   //prevent empty submissions
-  const handleEnter = useCallback(
-    (e: any) => {
+  const handleEnter = (e: any) => {
       if (e.key === 'Enter' && query) {
         handleSubmit(e);
       } else if (e.key == 'Enter') {
         e.preventDefault();
       }
-    },
-    [query],
-  );
+    };
 
   const chatMessages = useMemo(() => {
     return [
@@ -174,7 +172,7 @@ export default function ChatPage() {
     ];
   }, [messages, pending, pendingSourceDocs]);
 
-  //scroll to bottom of chat
+  //scroll to bottom of chat after any chatMessages change
   useEffect(() => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
@@ -203,7 +201,7 @@ export default function ChatPage() {
         setContextName(result[0].name);
       }      
     }); 
-  }, []);
+  }, []); // intentionally no dependencies surveillance -> []  ( called only initially on client side )
 
   return (
     <>

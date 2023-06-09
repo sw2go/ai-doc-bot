@@ -251,17 +251,11 @@ export default function FilesPage() {
       setOneTimeKey(otk.key);
       setTimeout(() => logDownloadRef.current?.click(), 0);
     } else {
-      alert( JSON.stringify( await res.json()) )
+      const { error } = await res.json();
+      console.log(error);
+      alert(error);
     }
   }
-
-  useEffect(() => { 
-    countVectors(contextName); 
-  }, [contextName]);
-
-  useEffect(() => {  
-    updateContextDropdown(); 
-  }, []);
 
   const updateContextDropdown = () => {   
     getContexts().then(result => {
@@ -271,6 +265,16 @@ export default function FilesPage() {
       }      
     }) 
   }
+
+  // update countVectors when contextname changes
+  useEffect(() => { 
+    countVectors(contextName); 
+  }, [contextName]);
+
+  // initially fill dropdown
+  useEffect(() => {  
+    updateContextDropdown(); 
+  },[]); // eslint-disable-line
 
   return (
     <>

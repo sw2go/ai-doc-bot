@@ -1,10 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { makeChain } from '@/utils/makechain';
-import { BaseContextSettings, ContextSettings, QAContextSettings } from '@/utils/contextSettings';
+import { makeChain, TokenSource } from '@/utils/makechain';
+import { ContextSettings, QAContextSettings } from '@/utils/contextSettings';
 import { BaseChain } from 'langchain/chains';
 import { Chat } from '@/types/api';
-import { createArrayCsvWriter, createObjectCsvWriter } from 'csv-writer'
-import { WORKING_DIR } from '@/config/serverSettings';
 import { CsvLog } from '@/utils/csvLog';
 
 export default async function handler(
@@ -32,6 +30,7 @@ export default async function handler(
     }
     
     const sanitizedQuestion = chat.question.trim().replaceAll('\n', ' ');  // OpenAI recommends replacing newlines with spaces for best results
+    let generatedQuestion = '';
 
     let chain: BaseChain | null = null;
     const context = ContextSettings.Get(chat.contextName);
@@ -52,8 +51,16 @@ export default async function handler(
       }
 
       //create chain
-      chain = await makeChain(qaContextSettings, chat.promptId, (token: string) => {
-        sendData(JSON.stringify({ data: token }));
+      chain = await makeChain(qaContextSettings, chat.promptId, ( tokenType: TokenSource, token: string ) => {  
+        switch(tokenType) {
+          case TokenSource.Default:
+            sendData(JSON.stringify({ data: token }));
+            return;
+          case TokenSource.QuestionGenerator:
+            generatedQuestion += token;
+            sendData(JSON.stringify({ data: `**Im Kontext des Chat-Verlaufs verstehe die Frage so:** ${token}\n\n\n` }));
+            return;
+        }      
       });
     }
 
@@ -67,6 +74,8 @@ export default async function handler(
     console.log('response: ', response?.text);
     sendData(JSON.stringify({ sourceDocs: response?.sourceDocuments }));
 
+    console.log(JSON.stringify(response));
+
     await CsvLog.append(
       req.headers['user-agent'] || '',
       chat.session || '',
@@ -76,6 +85,7 @@ export default async function handler(
       (chat.history || []).length,
       chat.promptId || 0,
       sanitizedQuestion,
+      generatedQuestion,
       response?.text,
       context
     );

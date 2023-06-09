@@ -128,7 +128,7 @@ const deleteVectors = async (
     return res.status(201).json(info);
 
   } catch (error: any) {
-    return res.status(500).json({
+    return res.status(400).json({
       error: error.message
     });
   }
