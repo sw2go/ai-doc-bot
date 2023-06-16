@@ -27,7 +27,7 @@ export const run = async () => {
     const rawDocs = await directoryLoader.load();
 
     await vectorStore.clear(INGEST_SCRIPT_NAMESPACE);
-    await vectorStore.upsert(INGEST_SCRIPT_NAMESPACE, rawDocs);
+    await vectorStore.upsert(INGEST_SCRIPT_NAMESPACE, rawDocs, 1300, 200);
 
   } catch (error) {
     console.log('error', error);
