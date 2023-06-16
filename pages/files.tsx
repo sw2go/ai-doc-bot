@@ -16,7 +16,8 @@ export default function FilesPage() {
   const inputDocFilesRef = useRef<HTMLInputElement | null>(null);
   const inputConfigFileRef = useRef<HTMLInputElement | null>(null);
   const secretRef = useRef<HTMLInputElement | null>(null);
-  const deleteRef = useRef<HTMLInputElement | null>(null);
+  const chunkRef = useRef<HTMLInputElement | null>(null);
+  const contextRef = useRef<HTMLInputElement | null>(null);
   const logDownloadRef = useRef<HTMLAnchorElement | null>(null);
 
   const namespaceSelectionChanged = async (e: ChangeEvent<HTMLSelectElement>) => {
@@ -84,9 +85,18 @@ export default function FilesPage() {
 
       let formData = new FormData();
 
+      const fields = [ 'chunkSize', 'chunkOverlap' ];
+      const values = chunkRef.current?.value.split(/[^\d]+/) || [];
+      console.log(chunkRef.current?.value);
+      console.log(values);
+
+      for (let i=0; i < fields.length && i < values.length; i++) {
+        formData.append(fields[i], values[i]);
+      }
+
       for (let i = 0; i < fileList.length; i++) {
         const file = fileList.item(i) as File; 
-        formData.append(`file${i}`, file)
+        formData.append(`file${i}`, file);        
       }
 
       const res = await fetch(`${API_URL}/contexts/${contextName}/vectors`, {
@@ -176,7 +186,7 @@ export default function FilesPage() {
           
         },
         body: JSON.stringify({
-          name: deleteRef.current?.value as string,
+          name: contextRef.current?.value as string,
           mode: 'OpenAI-QA'
         })
       });
@@ -197,14 +207,14 @@ export default function FilesPage() {
 
   const deleteContextConfigFile = async () => {
     try {
-      const res = (deleteRef.current?.value == '*')
+      const res = (contextRef.current?.value == '*')
       ? await fetch(`${API_URL}/contexts?type=2`, {
         method: "DELETE",
         headers: {
           'x-secret': secretRef.current?.value as string
         }
       })
-      : await fetch(`${API_URL}/contexts/${deleteRef.current?.value}`, {
+      : await fetch(`${API_URL}/contexts/${contextRef.current?.value}`, {
         method: "DELETE",
         headers: {
           'x-secret': secretRef.current?.value as string
@@ -278,7 +288,7 @@ export default function FilesPage() {
     countVectors(contextName); 
   }, [contextName]);
 
-  // initially fill dropdown
+  // initially fill dropdown and Chunk-Size & Overlap
   useEffect(() => {  
     updateContextDropdown(); 
   },[]); // eslint-disable-line
@@ -308,6 +318,9 @@ export default function FilesPage() {
             </div>
           </div>
           <div className="flex justify-center gap-5">
+            <div className="text-center pt-2">
+              Chunk-Size & Overlap<input className="border-solid ml-2 border-2" ref={chunkRef} defaultValue = '1300 200'  name="chunk"/>
+            </div>
             <div className="text-center">
               <form action="">
                 <input ref={inputDocFilesRef} name="file" type="file" multiple accept="application/pdf,text/plain" style={{ display: 'none' }} onChange={filesSelectionChanged} />
@@ -333,7 +346,7 @@ export default function FilesPage() {
           </div>
           <div className="flex justify-center gap-5 mt-10">
             <div className="text-center pt-2">
-              Context<input className="border-solid ml-2 border-2" ref={deleteRef} name="file"/>
+              Context<input className="border-solid ml-2 border-2" ref={contextRef} name="file"/>
             </div>
             <div className="text-center">
               <button className="bg-gray-200 hover:bg-gray-100 rounded p-2" onClick={addNewContext}>Add</button>

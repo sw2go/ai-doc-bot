@@ -1,15 +1,10 @@
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { OpenAIEmbeddings } from 'langchain/embeddings';
 import { PineconeStore } from 'langchain/vectorstores';
-import { pinecone } from '@/utils/pinecone-client';
 import { CustomPDFLoader } from '@/utils/customPDFLoader';
-import { PINECONE_INDEX_NAME } from '@/config/serverSettings';
-import { DirectoryLoader, TextLoader } from 'langchain/document_loaders';
+import { TextLoader } from 'langchain/document_loaders';
 import { Document } from "langchain/document";
-import { NamespaceSummary, VectorOperationsApi } from '@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch';
-import { Console } from 'console';
-import { ST } from 'next/dist/shared/lib/utils';
-
+import { VectorOperationsApi } from '@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch';
 
 export class DocVectorStore {
 
@@ -32,7 +27,7 @@ export class DocVectorStore {
     };
   }
 
-  public async add(namespace: string, filePaths: string []) {
+  public async add(namespace: string, filePaths: string [], chunkSize: number, chunkOverlap: number) {
 
     let rawDocs: Document[] = [];
 
@@ -49,7 +44,7 @@ export class DocVectorStore {
         default:
       }
     }
-    return await this.upsert(namespace, rawDocs);    
+    return await this.upsert(namespace, rawDocs, chunkSize, chunkOverlap);    
   }
 
   public async count(namespace: string) {
@@ -71,7 +66,7 @@ export class DocVectorStore {
     }
   }
 
-  public async upsert(namespace: string, rawDocs: Document[]) {
+  public async upsert(namespace: string, rawDocs: Document[], chunkSize: number, chunkOverlap: number) {
 
     const before = await this.count(namespace);
 
@@ -84,8 +79,8 @@ export class DocVectorStore {
 
     /* Split text into chunks */
     const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,    // max doc size in tokens
-      chunkOverlap: 200,  //       
+      chunkSize: chunkSize,       // max doc size in tokens
+      chunkOverlap: chunkOverlap, //       
       separators: ['\r\n\r\n','\r\n', '\n\n', '\n', ' ', ''] // default: [ '\n\n', '\n', ' ', '' ]
     });
   

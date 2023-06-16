@@ -68,7 +68,7 @@ const addVectors = async (
   try {
     
     const { contextName } = req.query as { contextName: string };
-
+  
     validateSecret(req, contextName);
     
     const form = new formidable.IncomingForm({ uploadDir: WORKING_DIR, keepExtensions: true });
@@ -81,12 +81,22 @@ const addVectors = async (
 
     const { fields, files } = await parseForm(req, form);
 
+    let chunkSize = parseInt(fields['chunkSize'] as string, 10);
+    let chunkOverlap = parseInt(fields['chunkOverlap'] as string, 10);
+    if (isNaN(chunkSize) || isNaN(chunkOverlap)) {
+      throw new Error('missing chunk parameters');
+    } else if (chunkSize < 100 || chunkSize < chunkOverlap) {
+      throw new Error('chunkSize > 100 and chunkSize > chunkOverlap is mandatory');
+    } else if (chunkSize > 2000) {
+      throw new Error('chunkSize < 2000 is mandatory');
+    } 
+
     // get file infos
     fileInfos = Object.keys(files).map(key => files[key] as File);
 
     // add docfiles to vector store
     const vectorStore = new DocVectorStore(pinecone.Index(PINECONE_INDEX_NAME));        
-    const { before, after } = await vectorStore.add(contextName, fileInfos.map(item => item.filepath));
+    const { before, after } = await vectorStore.add(contextName, fileInfos.map(item => item.filepath), chunkSize, chunkOverlap);
 
     const info: VectorInfo = {
       change: after - before,

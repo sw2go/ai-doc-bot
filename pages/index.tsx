@@ -231,7 +231,7 @@ export default function ChatPage() {
                       );
               })}
             </select>
-            <div><span className='text-base font-normal ml-5 mr-2 '>Kontext berücksichtigen</span><input ref={checkboxRef} className='justify-self-end' type='checkbox' id='bla' />   </div>                               
+            <div><span className='text-base font-normal ml-5 mr-2 '>Kontext berücksichtigen</span><input ref={checkboxRef} defaultChecked  className='justify-self-end' type='checkbox' id='bla' />   </div>                               
           </h1>
 
           <main className={styles.main}>
