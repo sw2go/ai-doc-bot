@@ -1,5 +1,5 @@
-# doc-bot 
-Chat with your documents. A chatbot app using ChatGPT. 
+# ai-doc-bot 
+Chat with your documents. A chatbot app using OpenAI. 
 - Define context names, e.g. topics you want to ask questions about, like 'a service' or 'a product'.  
 - Then upload your documents (*.txt and/or *.pdf files) to the corresponding context. 
 - Optionally customize the prompt used in a context, by uploading the modified settings.  
@@ -9,7 +9,7 @@ Chat with your documents. A chatbot app using ChatGPT.
 1. Clone the repo
 
 ```
-git clone git@github.com:sw2go/doc-bot.git
+git clone git@github.com:sw2go/ai-doc-bot.git
 ```
 
 2. Install packages
