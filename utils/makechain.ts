@@ -31,7 +31,7 @@ export const makeChain = async (
     while(pid > 0 && prompts[pid].length == 0) {
       pid--;
     }
-    console.log('using promptId:', pid);
+    // console.log('using promptId:', pid);
     return prompts[pid].join('\n');
   }
 
@@ -45,7 +45,7 @@ export const makeChain = async (
       callbackManager: onTokenStream 
       ? CallbackManager.fromHandlers({
         async handleLLMStart(llm, prompts, verbose) {
-          console.log( JSON.stringify({llm, prompts})      );
+          // console.log( JSON.stringify({llm, prompts})      );
         },
         async handleLLMEnd (output: LLMResult, verbose) {
           onTokenStream(TokenSource.QuestionGenerator, `${output.generations[0][0].text}`)

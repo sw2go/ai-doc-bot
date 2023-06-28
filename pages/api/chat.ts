@@ -69,14 +69,15 @@ export default async function handler(
       question: sanitizedQuestion,
       chat_history: chat.history || [],
     });
-    console.log('history:  ', (chat.history || []).length);
-    console.log('question: ', sanitizedQuestion);
-    console.log('response: ', response?.text);
+    //console.log('history:  ', (chat.history || []).length);
+    //console.log('question: ', sanitizedQuestion);
+    //console.log('response: ', response?.text);
     sendData(JSON.stringify({ sourceDocs: response?.sourceDocuments }));
 
-    console.log(JSON.stringify(response));
+    //console.log(JSON.stringify(response));
 
     await CsvLog.append(
+      req.headers['x-client-ip']?.toString() || '',
       req.headers['user-agent'] || '',
       chat.session || '',
       chat.contextName,

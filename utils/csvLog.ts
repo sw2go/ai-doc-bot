@@ -15,7 +15,8 @@ export class CsvLog {
       path: CsvLog.filePath,
       header: [
         {id: 'timestamp',          title: 'TIME' },
-        {id: 'userAgent',          title: 'AGENT' },
+        {id: 'clientIp',           title: 'CLIENTIP' },
+        {id: 'userAgent',          title: 'AGENT' },        
         {id: 'session',            title: 'SESSION' },
         {id: 'contextName',        title: 'CONTEXT' },        
         {id: 'maxTokens',          title: 'MAXTOKENS' },        
@@ -34,6 +35,7 @@ export class CsvLog {
   }
 
   public static async append(    
+    clientIp: string,
     userAgent: string,
     session: string,    
     contextName: string, 
@@ -50,7 +52,8 @@ export class CsvLog {
       await writer.writeRecords([
         {
           timestamp: (new Date()).toISOString(),
-          userAgent,
+          clientIp,
+          userAgent,          
           session,
           contextName,
           maxTokens,
