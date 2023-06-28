@@ -85,9 +85,9 @@ const addVectors = async (
     let chunkOverlap = parseInt(fields['chunkOverlap'] as string, 10);
     if (isNaN(chunkSize) || isNaN(chunkOverlap)) {
       throw new Error('missing chunk parameters');
-    } else if (chunkSize < 100 || chunkSize < chunkOverlap) {
+    } else if (chunkSize < 500 || chunkSize < chunkOverlap) {   // too small embeddings give poor results
       throw new Error('chunkSize > 100 and chunkSize > chunkOverlap is mandatory');
-    } else if (chunkSize > 2000) {
+    } else if (chunkSize > 4000) {
       throw new Error('chunkSize < 2000 is mandatory');
     } 
 

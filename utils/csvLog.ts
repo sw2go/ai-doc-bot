@@ -28,7 +28,8 @@ export class CsvLog {
         {id: 'settings',           title: 'SETTINGS' },
       ],
       fieldDelimiter: ';',
-      append: append
+      append: append,
+      encoding: 'latin1'
     });
   }
 

@@ -319,7 +319,7 @@ export default function FilesPage() {
           </div>
           <div className="flex justify-center gap-5">
             <div className="text-center pt-2">
-              Chunk-Size & Overlap<input className="border-solid ml-2 border-2" ref={chunkRef} defaultValue = '1300 200'  name="chunk"/>
+              Chunk-Size & Overlap<input className="border-solid ml-2 border-2" ref={chunkRef} defaultValue = '3500 200'  name="chunk"/>
             </div>
             <div className="text-center">
               <form action="">

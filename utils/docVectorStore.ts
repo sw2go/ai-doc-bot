@@ -79,7 +79,7 @@ export class DocVectorStore {
 
     /* Split text into chunks */
     const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: chunkSize,       // max doc size in tokens
+      chunkSize: chunkSize,       // max doc size in characters
       chunkOverlap: chunkOverlap, //       
       separators: ['\r\n\r\n','\r\n', '\n\n', '\n', ' ', ''] // default: [ '\n\n', '\n', ' ', '' ]
     });
@@ -90,6 +90,7 @@ export class DocVectorStore {
 
     /* create and store the embeddings in the vectorStore */
     const embeddings = new OpenAIEmbeddings();
+    
     await PineconeStore.fromDocuments(docs, embeddings, {
       pineconeIndex: this.index,
       namespace: namespace,

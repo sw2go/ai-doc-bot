@@ -9,7 +9,7 @@ export const config = {
 export function middleware(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
-
+  console.log(requestHeaders);
   let host = requestHeaders.get('host') || '#invalid#host#';
   let origin = requestHeaders.get('origin');
 
