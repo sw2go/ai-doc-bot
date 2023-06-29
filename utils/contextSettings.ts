@@ -39,7 +39,7 @@ export class ContextSettings {
       if (PROTECTED_CONTEXTS.some(x => x == contextName)) {
         this.Add(contextName,'OpenAI-QA');   // if READONLY_CONTEXT Config is missing create it .. 
       } else {
-        throw(new Error('Context is missing'));       // 
+        throw(new Error(`Context '${contextName}' is missing`));       // 
       }
     }
   }

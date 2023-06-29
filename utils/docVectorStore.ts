@@ -48,7 +48,7 @@ export class DocVectorStore {
   }
 
   public async count(namespace: string) {
-    const status = await this.index.describeIndexStats({describeIndexStatsRequest: { }});  // filter: { meta: "uuebkit" }
+    const status = await this.index.describeIndexStats({describeIndexStatsRequest: { }});
     let count: number = 0;
     if (status.namespaces) {
         count = status.namespaces[namespace]?.vectorCount || 0;
@@ -58,7 +58,7 @@ export class DocVectorStore {
   }
 
   public async getNamespaces() {
-    const status = await this.index.describeIndexStats({describeIndexStatsRequest: { }});  // filter: { meta: "uuebkit" }
+    const status = await this.index.describeIndexStats({describeIndexStatsRequest: { }});
     if (status.namespaces) {
       return Object.keys(status.namespaces);
     } else {

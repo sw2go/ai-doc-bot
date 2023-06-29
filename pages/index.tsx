@@ -208,7 +208,9 @@ export default function ChatPage() {
     getContexts().then(result => {
       setUiContext(result);
       if (result.length > 0) {
-        //setContextName(result.some(x => x.name == currentContext) ? currentContext : result[0].name);
+        if (currentContext.length == 0) {
+          setCurrentContext(result[0].name);
+        }
       }      
     }); 
   }, []); // intentionally no dependencies surveillance -> []  ( called only initially on client side )
