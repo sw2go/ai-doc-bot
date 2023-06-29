@@ -1,6 +1,8 @@
 # ai-doc-bot 
 Chat with your documents. A chatbot app using OpenAI. 
-- Define context names, e.g. topics you want to ask questions about, like 'a service' or 'a product'.  
+- Define context names, e.g. topics you want to ask questions about, like 'a service' or 'a product'.
+- Prepare some documents with relevant content for the specific topics. 
+- Preparing may be crucial, depending on text-chunk-size, local/global text context and occurance of keywords in the texts the chat-experience will differ.    
 - Then upload your documents (*.txt and/or *.pdf files) to the corresponding context. 
 - Optionally customize the prompt used in a context, by uploading the modified settings.  
 
