@@ -161,8 +161,13 @@
   white-space: pre-wrap !important;
 }
 
-.markdownanswer ol,
+.markdownanswer ol {
+  list-style-type: number;
+  margin: 1rem;
+}
+
 .markdownanswer ul {
+  list-style-type: disc;
   margin: 1rem;
 }
 

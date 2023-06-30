@@ -9,11 +9,21 @@ import { pinecone } from './pinecone-client';
 import { OpenAIEmbeddings } from 'langchain/embeddings';
 import { LLMResult } from 'langchain/dist/schema';
 
-export const makeChain = async (
+export const makeQAChain = async (
   contextSettings: QAContextSettings,
   promptId: number | undefined,
   onTokenStream?: (tokenType: TokenSource, token: string) => void,
 ) => {
+
+  let timeout: NodeJS.Timeout | null = setTimeout(() => {
+    if (timeout) {
+      timeout = null;
+      if (onTokenStream) {
+        onTokenStream(TokenSource.Timeout, 'timeout');
+      }      
+    }
+  }, contextSettings.timeout * 1000);
+
   const index = pinecone.Index(PINECONE_INDEX_NAME);
     
   /* create vectorstore*/
@@ -45,11 +55,20 @@ export const makeChain = async (
       callbackManager: onTokenStream 
       ? CallbackManager.fromHandlers({
         async handleLLMStart(llm, prompts, verbose) {
-          // console.log( JSON.stringify({llm, prompts})      );
+          timeout?.refresh();
+          //console.log( JSON.stringify({llm, prompts}) );
+        },        
+        async handleLLMNewToken(token) {
+          timeout?.refresh();
         },
         async handleLLMEnd (output: LLMResult, verbose) {
-          onTokenStream(TokenSource.QuestionGenerator, `${output.generations[0][0].text}`)
-        }
+          timeout?.refresh();
+          onTokenStream(TokenSource.QuestionGenerator, `${output.generations[0][0].text}`);
+        },            
+        async handleLLMError(err: Error, verbose?: boolean) {
+          timeout = null;
+          onTokenStream(TokenSource.Error, JSON.stringify({err}));
+        }        
       })
       : undefined,
     }),
@@ -66,9 +85,21 @@ export const makeChain = async (
       streaming: Boolean(onTokenStream),
       callbackManager: onTokenStream
         ? CallbackManager.fromHandlers({
+            async handleLLMStart(llm, prompts, verbose) {
+              timeout?.refresh();
+              //console.log( JSON.stringify({llm, prompts}) );
+            },  
             async handleLLMNewToken(token) {
+              timeout?.refresh();
               onTokenStream(TokenSource.Default, token);
             },
+            async handleLLMEnd(output: LLMResult, verbose) {
+              timeout = null;
+            },  
+            async handleLLMError(err: Error, verbose?: boolean) {
+              timeout = null;
+              onTokenStream(TokenSource.Error, JSON.stringify({err}));
+            }
           })
         : undefined,
     }),
@@ -87,5 +118,7 @@ export const makeChain = async (
 
 export enum TokenSource {
   Default = 0,
-  QuestionGenerator = 1
+  QuestionGenerator = 1,
+  Error = 2,
+  Timeout = 3
 }

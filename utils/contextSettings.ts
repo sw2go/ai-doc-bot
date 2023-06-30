@@ -81,16 +81,18 @@ export class ContextSettings {
   }
 }
 
-
-export interface BaseContextSettings {
-  mode: 'OpenAI-QA' | 'Other' | undefined;    // when extending type, extend BaseSchema, DefaultXXXContext
+export interface ChatSettings {
   contextName: string;
-  modelName: string;
-  maxTokens: number;
-  promptTemperature: number;
-  prompts: string[][];
+  maxTokens?: number;
+  promptTemperature?: number;
 }
 
+export interface BaseContextSettings extends ChatSettings {
+  mode: 'OpenAI-QA' | 'Other' | undefined;    // when extending type, extend BaseSchema, DefaultXXXContext
+  timeout: number;  
+  modelName: string;
+  prompts: string[][];
+}
 
 export interface QAContextSettings extends BaseContextSettings {
   prepromptTemperature: number;
@@ -102,6 +104,7 @@ export interface QAContextSettings extends BaseContextSettings {
 export const DefaultQAContext = (namespace: string): QAContextSettings => {
   return {
     mode: 'OpenAI-QA',
+    timeout: 30,
     contextName: namespace,
     modelName: 'gpt-3.5-turbo',
     maxTokens: 250,
@@ -150,6 +153,9 @@ const BaseSchema = {
       "type": "string",
       "pattern": /^(OpenAI-QA|Other)$/
     },
+    "timeout": {
+      "type": "integer"
+    }
   },
   "required": [
     "mode"
@@ -162,6 +168,9 @@ const QASchema = {
   "properties": {
     "mode": {
       "type": "string"
+    },
+    "timeout": {
+      "type": "integer"
     },
     "contextName": {
       "type": "string"
@@ -207,10 +216,7 @@ const QASchema = {
     "mode",
     "contextName",
     "modelName",
-    "maxTokens",
-    "promptTemperature",
     "prompts",
-    "prepromptTemperature",
     "preprompts",
     "numberSource",
     "returnSource"

@@ -46,7 +46,7 @@ export class CsvLog {
     question: string,
     generatedQuestion: string,
     response: string,
-    settings: BaseContextSettings
+    settings: BaseContextSettings | {}
     ) {
       const writer = CsvLog.create(fs.existsSync(CsvLog.filePath));
       await writer.writeRecords([
