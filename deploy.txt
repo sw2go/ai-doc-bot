@@ -19,8 +19,19 @@ DNS name label:     ls-doc-bot
 DNS nl scope reuse: Tenant
 Ports:              3000 TCP
 Restart policy:     On failure
-Advanced:	        Enter your environment variables, see .env and mark them as secure
+Advanced:	        Enter your environment variables, details see below
 Key management:     MMK
+
+In Configuration > Application settings set environment variables
+ADMIN_SECRET                        keyvault value e.g. @microsoft.keyvault(secretUri=https://your-key-vault.vault.azure.net/secrets/admin-secret/)
+ALLOWED_ORIGINS                     list of semicolon separated urls e.g. https://chat.company.com;https://test.company.com
+OPENAI_API_KEY                      keyvault value
+PINECONE_API_KEY                    keyvault value
+PINECONE_ENVIRONMENT                us-east4-gcp
+PINECONE_INDEX_NAME                 myIndex
+PROTECTED_CONTEXTS                  list of semicolon separated contextnames e.g. Contoso SA;productX
+WEBSITES_ENABLE_APP_SERVICE_STORAGE true     ... important if data in the home folder must survive container restart
+WEBSITES_PORT                       3000     ... for seamless startup tell azure explicitly the server port of the container 
 
 
 To inspect the docker  container locally, run the image locally: 
