@@ -4,6 +4,7 @@ import { BaseContextSettings, ChatSettings, ContextSettings, DefaultQAContext, Q
 import { BaseChain } from 'langchain/chains';
 import { Chat } from '@/types/api';
 import { CsvLog } from '@/utils/csvLog';
+import { BaseChatMessage, HumanChatMessage, AIChatMessage } from 'langchain/schema'
 
 export default async function handler(
   req: NextApiRequest,
@@ -101,10 +102,17 @@ export default async function handler(
       throw new Error('Invalid context.mode');
     }
 
+  
+    let histories: BaseChatMessage[] = [];
+    (chat.history || []).forEach(hist => {
+        histories.push(new HumanChatMessage(hist[0]));
+        histories.push(new AIChatMessage(hist[1]));
+    });
+
     //Ask a question
     const response = await chain?.call({
       question: sanitizedQuestion,
-      chat_history: chat.history || []
+      chat_history: histories
     });
     //console.log('history:  ', (chat.history || []).length);
     //console.log('question: ', sanitizedQuestion);

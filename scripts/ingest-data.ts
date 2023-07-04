@@ -1,7 +1,8 @@
 import { pinecone } from '@/utils/pinecone-client';
 import { CustomPDFLoader } from '@/utils/customPDFLoader';
 import { PINECONE_INDEX_NAME } from '@/config/serverSettings';
-import { DirectoryLoader, TextLoader } from 'langchain/document_loaders';
+import { DirectoryLoader } from 'langchain/document_loaders/fs/directory';
+import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { DocVectorStore } from '@/utils/docVectorStore';
 import { PROTECTED_CONTEXTS } from '@/config/runtimeSettings';
 

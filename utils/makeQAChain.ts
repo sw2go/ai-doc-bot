@@ -1,26 +1,24 @@
-import { OpenAIChat } from 'langchain/llms';
-import { LLMChain, ChatVectorDBQAChain, loadQAChain } from 'langchain/chains';
-import { PineconeStore } from 'langchain/vectorstores';
+import { OpenAIChat } from 'langchain/llms/openai';
+import { ConversationalRetrievalQAChain } from 'langchain/chains';
+import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PromptTemplate } from 'langchain/prompts';
-import { CallbackManager } from 'langchain/callbacks';
+import { BaseCallbackHandler, NewTokenIndices } from 'langchain/callbacks';
 import { PINECONE_INDEX_NAME } from '@/config/serverSettings';
 import { QAContextSettings } from './contextSettings';
 import { pinecone } from './pinecone-client';
-import { OpenAIEmbeddings } from 'langchain/embeddings';
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { LLMResult } from 'langchain/dist/schema';
 
 export const makeQAChain = async (
   contextSettings: QAContextSettings,
   promptId: number | undefined,
-  onTokenStream?: (tokenType: TokenSource, token: string) => void,
+  onTokenStream: (tokenType: TokenSource, token: string) => void,
 ) => {
 
   let timeout: NodeJS.Timeout | null = setTimeout(() => {
     if (timeout) {
       timeout = null;
-      if (onTokenStream) {
-        onTokenStream(TokenSource.Timeout, 'timeout');
-      }      
+      onTokenStream(TokenSource.Timeout, 'timeout');
     }
   }, contextSettings.timeout * 1000);
 
@@ -48,71 +46,108 @@ export const makeQAChain = async (
   const prePrompt = getPrompt(promptId, contextSettings.preprompts);
   const prompt = getPrompt(promptId, contextSettings.prompts);
 
-  const questionGenerator = new LLMChain({
-    llm: new OpenAIChat({ 
-      temperature: contextSettings.prepromptTemperature,
-      streaming: true,
-      callbackManager: onTokenStream 
-      ? CallbackManager.fromHandlers({
-        async handleLLMStart(llm, prompts, verbose) {
-          timeout?.refresh();
-          //console.log( JSON.stringify({llm, prompts}) );
-        },        
-        async handleLLMNewToken(token) {
-          timeout?.refresh();
-        },
-        async handleLLMEnd (output: LLMResult, verbose) {
-          timeout?.refresh();
-          onTokenStream(TokenSource.QuestionGenerator, `${output.generations[0][0].text}`);
-        },            
-        async handleLLMError(err: Error, verbose?: boolean) {
-          timeout = null;
-          onTokenStream(TokenSource.Error, JSON.stringify({err}));
-        }        
-      })
-      : undefined,
-    }),
-    prompt: PromptTemplate.fromTemplate(prePrompt),
+  // const questionGenerator = new LLMChain({
+  //   llm: new OpenAIChat({ 
+  //     temperature: contextSettings.prepromptTemperature,
+  //     streaming: true,
+  //     callbackManager: onTokenStream 
+  //     ? CallbackManager.fromHandlers({
+  //       async handleLLMStart(llm, prompts, verbose) {
+  //         timeout?.refresh();
+  //         //console.log( JSON.stringify({llm, prompts}) );
+  //       },        
+  //       async handleLLMNewToken(token) {
+  //         timeout?.refresh();
+  //       },
+  //       async handleLLMEnd (output: LLMResult, runId: string, parentRunId?: string) {
+  //         timeout?.refresh();
+  //         onTokenStream(TokenSource.QuestionGenerator, `${output.generations[0][0].text}`);
+  //       },            
+  //       async handleLLMError(err: Error, runId: string, parentRunId?: string) {
+  //         timeout = null;
+  //         onTokenStream(TokenSource.Error, JSON.stringify({err}));
+  //       }        
+  //     })
+  //     : undefined,
+  //   }),
+  //   prompt: PromptTemplate.fromTemplate(prePrompt),
+  // });
+
+  const timeoutHandler = BaseCallbackHandler.fromMethods({
+    handleLLMStart(llm, prompts) {
+      timeout?.refresh();    
+    },  
+    handleLLMNewToken(token: string, idx: NewTokenIndices) {
+      timeout?.refresh();
+    },
+    handleLLMEnd(output: LLMResult, runId: string, parentRunId?: string) {
+      timeout = null;
+    },  
+    handleLLMError(err: Error, runId: string, parentRunId?: string) {
+      timeout = null;
+    }
   });
 
-  const docChain = loadQAChain(
-    new OpenAIChat({
-      topP: 1,
-      stop: undefined,
-      temperature: contextSettings.promptTemperature,
-      modelName: contextSettings.modelName, //  'gpt-3.5-turbo'  'gpt-4'        change this to older versions (e.g. gpt-3.5-turbo) if you don't have access to gpt-4
-      maxTokens: contextSettings.maxTokens,
-      streaming: Boolean(onTokenStream),
-      callbackManager: onTokenStream
-        ? CallbackManager.fromHandlers({
-            async handleLLMStart(llm, prompts, verbose) {
-              timeout?.refresh();
-              //console.log( JSON.stringify({llm, prompts}) );
-            },  
-            async handleLLMNewToken(token) {
-              timeout?.refresh();
-              onTokenStream(TokenSource.Default, token);
-            },
-            async handleLLMEnd(output: LLMResult, verbose) {
-              timeout = null;
-            },  
-            async handleLLMError(err: Error, verbose?: boolean) {
-              timeout = null;
-              onTokenStream(TokenSource.Error, JSON.stringify({err}));
-            }
-          })
-        : undefined,
-    }),
-    { prompt: PromptTemplate.fromTemplate(prompt) },  // 'normal' prompt
-  );
-
-  return new ChatVectorDBQAChain({
-    vectorstore: vectorStore,
-    combineDocumentsChain: docChain,
-    questionGeneratorChain: questionGenerator,
-    returnSourceDocuments: contextSettings.returnSource,
-    k: contextSettings.numberSource, //number of source documents to return, 
+  const generatedQuestionHandler = BaseCallbackHandler.fromMethods({
+    async handleLLMEnd(output: LLMResult, runId: string, parentRunId?: string) {
+      onTokenStream(TokenSource.QuestionGenerator, `${output.generations[0][0].text}`);
+    }
   });
+
+  const defaultNewTokenHandler = BaseCallbackHandler.fromMethods({
+    handleLLMNewToken(token: string, idx: NewTokenIndices, runId: string, parentRunId?: string) {
+      onTokenStream(TokenSource.Default, token);
+    }
+  });
+
+  const errorHandler = BaseCallbackHandler.fromMethods({
+    handleLLMError(err: Error, runId: string, parentRunId?: string) {
+      onTokenStream(TokenSource.Error, JSON.stringify({err}));
+    }  
+  });
+
+  const qaModel = new OpenAIChat({
+    topP: 1,
+    stop: undefined,
+    temperature: contextSettings.promptTemperature,
+    modelName: contextSettings.modelName, //  'gpt-3.5-turbo'  'gpt-4'
+    maxTokens: contextSettings.maxTokens,
+    streaming: true,
+    callbacks: [
+      timeoutHandler,
+      defaultNewTokenHandler,
+      errorHandler
+    ]
+  });
+
+  const questionGeneratorModel = new OpenAIChat({
+    topP: 1,
+    stop: undefined,
+    temperature: contextSettings.prepromptTemperature,
+    modelName: contextSettings.modelName, //  'gpt-3.5-turbo'  'gpt-4'
+    maxTokens: contextSettings.maxTokens,
+    streaming: true,
+    callbacks: [
+      timeoutHandler,
+      generatedQuestionHandler,
+      errorHandler
+    ]
+  });
+
+  return ConversationalRetrievalQAChain.fromLLM(
+    qaModel, 
+    vectorStore.asRetriever(contextSettings.numberSource),
+    {
+      questionGeneratorChainOptions: {
+        llm: questionGeneratorModel,
+        template: prePrompt
+      },
+      qaChainOptions: {
+        type: 'stuff',
+        prompt: PromptTemplate.fromTemplate(prompt)
+      },
+      returnSourceDocuments: contextSettings.returnSource
+    })
 };
 
 

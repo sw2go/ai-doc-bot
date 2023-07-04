@@ -1,8 +1,8 @@
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { OpenAIEmbeddings } from 'langchain/embeddings';
-import { PineconeStore } from 'langchain/vectorstores';
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
+import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { CustomPDFLoader } from '@/utils/customPDFLoader';
-import { TextLoader } from 'langchain/document_loaders';
+import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { Document } from "langchain/document";
 import { VectorOperationsApi } from '@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch';
 
