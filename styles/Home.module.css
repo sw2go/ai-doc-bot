@@ -171,11 +171,23 @@
   margin: 1rem;
 }
 
+.cancelicon,
 .boticon,
 .usericon {
   margin-right: 1rem;
   border-radius: 0.1rem;
   height: 100%;
+  width: 40px;
+}
+
+.usericon {
+  width: 28px;
+  margin-left: 6px;
+  margin-right: calc(1rem + 6px);
+}
+
+.cancelicon:hover {
+  opacity: 0.6;
 }
 
 .markdownanswer h1,

@@ -2,12 +2,13 @@ import { OpenAIChat } from 'langchain/llms/openai';
 import { ConversationalRetrievalQAChain } from 'langchain/chains';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PromptTemplate } from 'langchain/prompts';
-import { BaseCallbackHandler, NewTokenIndices } from 'langchain/callbacks';
+import { BaseCallbackHandler, ConsoleCallbackHandler, NewTokenIndices } from 'langchain/callbacks';
 import { PINECONE_INDEX_NAME } from '@/config/serverSettings';
 import { QAContextSettings } from './contextSettings';
 import { pinecone } from './pinecone-client';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
-import { LLMResult } from 'langchain/dist/schema';
+import { LLMResult } from 'langchain/schema';
+import { TimeoutCallbackHandler } from './timeoutCallbackHandler';
 
 export const makeQAChain = async (
   contextSettings: QAContextSettings,
@@ -15,16 +16,8 @@ export const makeQAChain = async (
   onTokenStream: (tokenType: TokenSource, token: string) => void,
 ) => {
 
-  let timeout: NodeJS.Timeout | null = setTimeout(() => {
-    if (timeout) {
-      timeout = null;
-      onTokenStream(TokenSource.Timeout, 'timeout');
-    }
-  }, contextSettings.timeout * 1000);
-
   const index = pinecone.Index(PINECONE_INDEX_NAME);
     
-  /* create vectorstore*/
   const vectorStore = await PineconeStore.fromExistingIndex(
     new OpenAIEmbeddings({}),
     {
@@ -46,46 +39,8 @@ export const makeQAChain = async (
   const prePrompt = getPrompt(promptId, contextSettings.preprompts);
   const prompt = getPrompt(promptId, contextSettings.prompts);
 
-  // const questionGenerator = new LLMChain({
-  //   llm: new OpenAIChat({ 
-  //     temperature: contextSettings.prepromptTemperature,
-  //     streaming: true,
-  //     callbackManager: onTokenStream 
-  //     ? CallbackManager.fromHandlers({
-  //       async handleLLMStart(llm, prompts, verbose) {
-  //         timeout?.refresh();
-  //         //console.log( JSON.stringify({llm, prompts}) );
-  //       },        
-  //       async handleLLMNewToken(token) {
-  //         timeout?.refresh();
-  //       },
-  //       async handleLLMEnd (output: LLMResult, runId: string, parentRunId?: string) {
-  //         timeout?.refresh();
-  //         onTokenStream(TokenSource.QuestionGenerator, `${output.generations[0][0].text}`);
-  //       },            
-  //       async handleLLMError(err: Error, runId: string, parentRunId?: string) {
-  //         timeout = null;
-  //         onTokenStream(TokenSource.Error, JSON.stringify({err}));
-  //       }        
-  //     })
-  //     : undefined,
-  //   }),
-  //   prompt: PromptTemplate.fromTemplate(prePrompt),
-  // });
-
-  const timeoutHandler = BaseCallbackHandler.fromMethods({
-    handleLLMStart(llm, prompts) {
-      timeout?.refresh();    
-    },  
-    handleLLMNewToken(token: string, idx: NewTokenIndices) {
-      timeout?.refresh();
-    },
-    handleLLMEnd(output: LLMResult, runId: string, parentRunId?: string) {
-      timeout = null;
-    },  
-    handleLLMError(err: Error, runId: string, parentRunId?: string) {
-      timeout = null;
-    }
+  const timeoutHandler = new TimeoutCallbackHandler(contextSettings.timeout, () => { 
+    onTokenStream(TokenSource.Timeout, 'OpenAI timeout');
   });
 
   const generatedQuestionHandler = BaseCallbackHandler.fromMethods({
@@ -101,8 +56,8 @@ export const makeQAChain = async (
   });
 
   const errorHandler = BaseCallbackHandler.fromMethods({
-    handleLLMError(err: Error, runId: string, parentRunId?: string) {
-      onTokenStream(TokenSource.Error, JSON.stringify({err}));
+    handleLLMError(err: any, runId: string, parentRunId?: string) {
+      onTokenStream(TokenSource.Error, err.message);
     }  
   });
 
@@ -131,6 +86,7 @@ export const makeQAChain = async (
       timeoutHandler,
       generatedQuestionHandler,
       errorHandler
+      //new ConsoleCallbackHandler()
     ]
   });
 

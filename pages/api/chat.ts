@@ -6,10 +6,13 @@ import { Chat } from '@/types/api';
 import { CsvLog } from '@/utils/csvLog';
 import { BaseChatMessage, HumanChatMessage, AIChatMessage } from 'langchain/schema'
 
+const FOLLOWUP_RESPONSE_PREFIX = '**Im Kontext des Chat-Verlaufs verstehe ich die Frage so:** ';
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
+  
   const chat = req.body as Chat;
 
   res.writeHead(200, {
@@ -18,9 +21,9 @@ export default async function handler(
     Connection: 'keep-alive',
   });
 
-  const sendData = (data: string) => {
-    res.write(`data: ${data}\n\n`);
-  };
+  // const sendData = (data: string) => {
+  //   res.write(`data: ${data}\n\n`);
+  // };
 
   let sanitizedQuestion = '';
   let generatedQuestion = '';
@@ -43,9 +46,17 @@ export default async function handler(
     );
   }
 
+  // Client abort exception handling -> abort chain as well
+  const chainAbortController = new AbortController();  
+  const clientRequestAbortedHandler = (err: Error) => {
+    if (err.message == 'aborted') {
+      chainAbortController.abort();
+    }
+  }
+
   try {
 
-    sendData(JSON.stringify({ data: '' }));
+    sendObject(res, { data: '' });
 
     if (!chat.question) {
       throw new Error('No question in the request');
@@ -72,28 +83,26 @@ export default async function handler(
       context = qaContextSettings;  // reassign context to have everything in the log as well
       chat.maxTokens = qaContextSettings.maxTokens;
       chat.promptTemperature = qaContextSettings.prepromptTemperature;
-
+    
       //create chain
       chain = await makeQAChain(qaContextSettings, chat.promptId, ( tokenType: TokenSource, token: string ) => {  
         switch(tokenType) {
           case TokenSource.Default:
-            sendData(JSON.stringify({ data: token }));
+            sendObject(res, { data: token });
             return;
           case TokenSource.QuestionGenerator:
             generatedQuestion += token;
-            sendData(JSON.stringify({ data: `**Im Kontext des Chat-Verlaufs verstehe ich die Frage so:** ${token}\n\n\n` }));
+            sendObject(res, { data: `${FOLLOWUP_RESPONSE_PREFIX}${token}\n\n\n` });
             return;
           case TokenSource.Error:  
             chatLog(`Error: ${token}`);
-            sendData(JSON.stringify({ data: `Oops - da ist ein Fehler passiert!\n\nException: ${token}\n\nBitte laden sie die Seite neu und versuchen Sie es noch einmal.`}));
-            sendData('[DONE]');
-            res.end();
+            sendObject(res, { data: `**Oops!** Da ist ein Fehler passiert.\n\nException: ${token}\n\nBitte laden sie die Seite neu und versuchen Sie es noch einmal.`});
+            sendDone(res);
             return;
           case TokenSource.Timeout:
             chatLog(`Timeout: ${token}`);
-            sendData(JSON.stringify({ data: `Oha lätz! OpenAI ist sehr beschäftigt und antwortet nicht.\n\nException: ${token}\n\nBitte versuchen Sie es noch einmal.`}));
-            sendData('[DONE]');
-            res.end();
+            sendObject(res, { data: `**Oha lätz!** Der Server ist sehr beschäftigt und antwortet nicht.\n\nException: ${token}\n\nBitte versuchen Sie es noch einmal.`});
+            sendDone(res);
             return;
         }      
       });
@@ -102,65 +111,52 @@ export default async function handler(
       throw new Error('Invalid context.mode');
     }
 
-  
-    let histories: BaseChatMessage[] = [];
-    (chat.history || []).forEach(hist => {
-        histories.push(new HumanChatMessage(hist[0]));
-        histories.push(new AIChatMessage(hist[1]));
-    });
-
-    //Ask a question
+    process.once('uncaughtException', clientRequestAbortedHandler);
+    
     const response = await chain?.call({
       question: sanitizedQuestion,
-      chat_history: histories
+      chat_history: createChatMessages(chat.history),
+      signal: chainAbortController.signal
     });
-    //console.log('history:  ', (chat.history || []).length);
-    //console.log('question: ', sanitizedQuestion);
-    //console.log('response: ', response?.text);
-    sendData(JSON.stringify({ sourceDocs: response?.sourceDocuments }));
-
-    //console.log(JSON.stringify(response));
 
     await chatLog(response?.text);
-
-    // await CsvLog.append(
-    //   req.headers['x-client-ip']?.toString() || '',
-    //   req.headers['user-agent'] || '',
-    //   chat.session || '',
-    //   chat.contextName,
-    //   chat.maxTokens || 0,
-    //   chat.promptTemperature || 0,
-    //   (chat.history || []).length,
-    //   chat.promptId || 0,
-    //   sanitizedQuestion,
-    //   generatedQuestion,
-    //   response?.text,
-    //   context
-    // );
+    sendObject(res, { sourceDocs: response?.sourceDocuments });
 
   } catch (error: any) {
 
     await chatLog(error.message);
-
-    // await CsvLog.append(
-    //   req.headers['x-client-ip']?.toString() || '',
-    //   req.headers['user-agent'] || '',
-    //   chat.session || '',
-    //   chat.contextName,
-    //   chat.maxTokens || 0,
-    //   chat.promptTemperature || 0,
-    //   (chat.history || []).length,
-    //   chat.promptId || 0,
-    //   sanitizedQuestion,
-    //   generatedQuestion,
-    //   error.message,
-    //   {}
-    // );
-
-    sendData(JSON.stringify({ data: `Oje - da ist ein Fehler passiert!\n\nException: ${error.message}\n\nBitte laden sie die Seite neu und versuchen Sie es noch einmal.`}));
+    sendObject(res, { data: `**Oje!**Da ist ein Fehler passiert!\n\nException: ${error.message}\n\nBitte laden sie die Seite neu und versuchen Sie es noch einmal.`});
 
   } finally {
-    sendData('[DONE]');
-    res.end();
+    process.off('uncaughtException', clientRequestAbortedHandler);      // unwire process event handler
+    sendDone(res);
   }
+}
+
+const sendObject = (res: NextApiResponse, obj: any) => {
+  const data = JSON.stringify(obj);
+  res.write(`data: ${data}\n\n`);
+};
+
+const sendDone = (res: NextApiResponse) => {
+  res.write(`data: [DONE]\n\n`);
+  res.end();
+};
+
+
+
+
+const createChatMessages = (history: [string,string][]) => {
+  let result: BaseChatMessage[] = [];
+  (history || []).forEach(hist => {
+      result.push(new HumanChatMessage(hist[0]));
+
+      if (hist[1].startsWith(FOLLOWUP_RESPONSE_PREFIX)) {
+        let valu = hist[1].substring(FOLLOWUP_RESPONSE_PREFIX.length);
+        result.push(new AIChatMessage(valu));
+      } else {
+        result.push(new AIChatMessage(hist[1]));
+      }        
+  });
+  return result;
 }

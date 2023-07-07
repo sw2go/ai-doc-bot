@@ -5,7 +5,8 @@ import { Message } from '@/types/chat';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import Image from 'next/image';
 import userIcon from 'public/usericon.png';
-import botIcon from 'public/bot-image.png'
+import botIcon from 'public/bot-image.png';
+import cancelIcon from 'public/cancelicon.png';
 import ReactMarkdown from 'react-markdown';
 import LoadingDots from '@/components/ui/LoadingDots';
 import { Document } from 'langchain/document';
@@ -59,8 +60,22 @@ export default function ChatPage() {
 
   const abortAnswer = () => {
     if (abortController) {
-      console.log("abort");
       abortController.abort();
+      setAbortController(undefined);
+      setDone();
+      setLoading(false);
+    }
+  };
+
+  const setDone = () => { 
+    const lastMessage = messageState.messages[messageState.messages.length-1];
+    if (lastMessage.type = 'userMessage') {      
+      setMessageState((state) => ({
+        history: [...state.history],
+        messages: state.messages.slice(0,state.messages.length-1),
+        pending: undefined,
+        pendingSourceDocs: undefined,
+      }));  
     }
   };
 
@@ -120,6 +135,7 @@ export default function ChatPage() {
         onerror: (err: any) => { throw new Error(err) },  // ohne throw -> retry endlessly  
         onmessage: (event) => {          
           if (event.data === '[DONE]') {
+            setAbortController(undefined);
             setMessageState((state) => ({
               history: [...state.history, [question, state.pending ?? '']],
               messages: [
@@ -243,25 +259,39 @@ export default function ChatPage() {
                   let icon;
                   let className;
                   if (message.type === 'apiMessage') {
-                    icon = (
-                      <Image
-                        src={botIcon}   //"/bot-image.png"
-                        alt="AI"
-                        width="40"
-                        height="40"
-                        className={styles.boticon}
-                        onClick={abortAnswer}
-                        priority
-                      />
-                    );
+                    // As long as the latest apimessage is in progress it can be canceled  
+                    if (chatMessages.length-1 == index && loading) {
+                      icon = (  // CancelIcon
+                        <Image
+                          src={cancelIcon}
+                          alt="AI"
+                          // width="40"
+                          // height="40"
+                          className={styles.cancelicon}
+                          onClick={abortAnswer}
+                          priority
+                        />
+                      )
+                    } else {
+                      icon = (  // CancelIcon
+                        <Image
+                          src={botIcon}
+                          alt="AI"
+                          // width="40"
+                          // height="40"
+                          className={styles.boticon}
+                          priority
+                        />
+                      );
+                    }
                     className = styles.apimessage;
                   } else {
-                    icon = (
+                    icon = (    // UserIcon
                       <Image
-                        src={userIcon}   //"/usericon.png"
+                        src={userIcon}
                         alt="Me"
-                        width="30"
-                        height="30"
+                        // width="30"
+                        // height="30"
                         className={styles.usericon}
                         priority
                       />
