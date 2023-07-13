@@ -6,14 +6,24 @@
    then adjust server config to allow this origin
 -  The OPTIONS Method is automatically called by the Browser whenever the origin does not match the fetch-method's host-url. 
 
-
-
-
 2. "Fehler" NEXT_PUBLIC.. Umgebungsvariablen werden im Docker-Container nicht aktualisiert
 -> Ursache next.js übernimmt process.env.NEXT_PUBLIC.. Werte zur build-Zeit und fügt sie als Konstanten in den Code ein
 
+3. LLM Logging
+-  add ConsoleCallbackHandler to the callbacks in the OpenAIChat constructor
 
-3. Fehler mit "npm run dev" läuft alles
+4. HTTP Interception of Client Resquests
+-  see middleware.ts
+
+5. HTTP Interception/Logging when backend (node) is acting as client
+-  Depending on the used packages under the hood (see package-lock.json) one must use a different approach
+   Either use: set NODE_DEBUG=http,https,net,stream then call npm run ... (this logs a lot but no pinecone?)
+   Or register a handler on the underlying module (see httpLogging.ts)
+   OpenAI uses axois, Pinecone node-fetch, in the end there was no one fits all solution, and logging pinecone failed at all
+   To see all outgoing http traffic I ended up by using a external open source tool "HTTP toolkit"
+   
+
+6. Fehler mit "npm run dev" läuft alles
 
 Wenn als Docker container gibt's Fehler mit langchain "400 Bad request"
 

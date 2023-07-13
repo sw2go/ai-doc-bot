@@ -333,7 +333,10 @@ export default function ChatPage() {
                                       {doc.pageContent}
                                     </ReactMarkdown>
                                     <p className="mt-2">
-                                      <b>Source:</b> {doc.metadata.source}
+                                      <b className='inline-block w-16'>Score:</b> {doc.metadata.score}
+                                    </p>
+                                    <p >
+                                      <b className='inline-block w-16'>Source:</b> {doc.metadata.source}
                                     </p>
                                   </AccordionContent>
                                 </AccordionItem>

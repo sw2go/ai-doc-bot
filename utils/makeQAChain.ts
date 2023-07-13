@@ -9,10 +9,42 @@ import { pinecone } from './pinecone-client';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { LLMResult } from 'langchain/schema';
 import { TimeoutCallbackHandler } from './timeoutCallbackHandler';
+import { getChatHistoryMessages, getPrompt, TokenSource } from  './makeChainHelper';
+import { countTokens } from './countToken';
+import { ServerStorage } from './serverStorage';
+import { CustomRetriever } from './customRetriever';
+
+/**
+ * Prerequisit:
+ * -  A vector-database that has been ingested with embeddings
+ * 
+ * 
+ * 1. Given is the user-question and the chat-history
+ *    <= question, chat-history
+ * 
+ * 2. If chat-history > 0 generate a new question based on the chat-history and the user-question
+ *    => post preprompt(user-question, chat-history) to openai/.../completions
+ *    <= question 
+ * 
+ * 3. With the question create it's embedding
+ *    => post question to openai/.../embeddings
+ *    <= embedding
+ * 
+ * 4. With the embedding fetch the semantically nearest n text-chunks from the vector-database.
+ *    => post n and the embedding to pinecone/.../query
+ *    <= n text-chunks
+ * 
+ * 5. Generate a answer by using the question and the found text-chunks as context
+ *    => post prompt(question, context) to openai/.../completions
+ *    <= response
+ * 
+ */
 
 export const makeQAChain = async (
   contextSettings: QAContextSettings,
-  promptId: number | undefined,
+  history: [string, string][],
+  question: string,
+  abortController: AbortController,
   onTokenStream: (tokenType: TokenSource, token: string) => void,
 ) => {
 
@@ -27,24 +59,15 @@ export const makeQAChain = async (
     },
   );
 
-  const getPrompt = (startId: number | undefined, prompts: string[][]) => {
-    let pid = (startId && startId >= 0) ? (prompts.length > startId) ? startId : prompts.length -1 : 0;
-    while(pid > 0 && prompts[pid].length == 0) {
-      pid--;
-    }
-    // console.log('using promptId:', pid);
-    return prompts[pid].join('\n');
-  }
-
-  const prePrompt = getPrompt(promptId, contextSettings.preprompts);
-  const prompt = getPrompt(promptId, contextSettings.prompts);
+  const prePrompt = getPrompt(contextSettings.prepromptId, contextSettings.preprompts);
+  const prompt = getPrompt(contextSettings.promptId, contextSettings.prompts);
 
   const timeoutHandler = new TimeoutCallbackHandler(contextSettings.timeout, () => { 
     onTokenStream(TokenSource.Timeout, 'OpenAI timeout');
   });
 
   const generatedQuestionHandler = BaseCallbackHandler.fromMethods({
-    async handleLLMEnd(output: LLMResult, runId: string, parentRunId?: string) {
+    handleLLMEnd(output: LLMResult, runId: string, parentRunId?: string) {
       onTokenStream(TokenSource.QuestionGenerator, `${output.generations[0][0].text}`);
     }
   });
@@ -61,6 +84,7 @@ export const makeQAChain = async (
     }  
   });
 
+  
   const qaModel = new OpenAIChat({
     topP: 1,
     stop: undefined,
@@ -71,7 +95,8 @@ export const makeQAChain = async (
     callbacks: [
       timeoutHandler,
       defaultNewTokenHandler,
-      errorHandler
+      errorHandler,
+      //new ConsoleCallbackHandler()
     ]
   });
 
@@ -85,14 +110,19 @@ export const makeQAChain = async (
     callbacks: [
       timeoutHandler,
       generatedQuestionHandler,
-      errorHandler
+      errorHandler,
       //new ConsoleCallbackHandler()
     ]
   });
 
-  return ConversationalRetrievalQAChain.fromLLM(
+
+  // ev mal ContextualCompressionRetriever probieren
+  //const retriever = vectorStore.asRetriever(contextSettings.numberSource)
+  const retriever = new CustomRetriever(vectorStore, contextSettings.numberSource);
+
+  const chain = ConversationalRetrievalQAChain.fromLLM(
     qaModel, 
-    vectorStore.asRetriever(contextSettings.numberSource),
+    retriever,
     {
       questionGeneratorChainOptions: {
         llm: questionGeneratorModel,
@@ -103,13 +133,27 @@ export const makeQAChain = async (
         prompt: PromptTemplate.fromTemplate(prompt)
       },
       returnSourceDocuments: contextSettings.returnSource
-    })
+    }
+  );
+
+  const store = new ServerStorage(3600); 
+
+  let prePromptCount = await store.GetCreateItem<number>(prePrompt, () => countTokens(prePrompt));
+  let questionCount = await store.GetCreateItem<number>(question, () => countTokens(question));
+
+  //console.log(`model:${contextSettings.modelTokens} max:${contextSettings.maxTokens} prompt:${prePromptCount} quest:${questionCount}` );
+
+  let remainingTokens = contextSettings.modelTokens - contextSettings.maxTokens - prePromptCount - questionCount;
+
+  const chat_history = await getChatHistoryMessages(history, remainingTokens);
+  
+  return await chain?.call({
+    question: question,
+    chat_history: chat_history,
+    signal: abortController.signal
+  });
+
 };
 
 
-export enum TokenSource {
-  Default = 0,
-  QuestionGenerator = 1,
-  Error = 2,
-  Timeout = 3
-}
+

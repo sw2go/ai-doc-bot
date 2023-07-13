@@ -1,12 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { makeQAChain, TokenSource } from '@/utils/makeQAChain';
+import { makeQAChain } from '@/utils/makeQAChain';
 import { BaseContextSettings, ChatSettings, ContextSettings, DefaultQAContext, QAContextSettings } from '@/utils/contextSettings';
-import { BaseChain } from 'langchain/chains';
 import { Chat } from '@/types/api';
 import { CsvLog } from '@/utils/csvLog';
-import { BaseChatMessage, HumanChatMessage, AIChatMessage } from 'langchain/schema'
+import { GENERATED_QUESTION_RESPONSE_PREFIX, TokenSource } from '@/utils/makeChainHelper';
+import { ServerStorage } from '@/utils/serverStorage';
 
-const FOLLOWUP_RESPONSE_PREFIX = '**Im Kontext des Chat-Verlaufs verstehe ich die Frage so:** ';
 
 export default async function handler(
   req: NextApiRequest,
@@ -20,10 +19,6 @@ export default async function handler(
     'Cache-Control': 'no-cache, no-transform',
     Connection: 'keep-alive',
   });
-
-  // const sendData = (data: string) => {
-  //   res.write(`data: ${data}\n\n`);
-  // };
 
   let sanitizedQuestion = '';
   let generatedQuestion = '';
@@ -56,6 +51,8 @@ export default async function handler(
 
   try {
 
+    process.once('uncaughtException', clientRequestAbortedHandler);
+
     sendObject(res, { data: '' });
 
     if (!chat.question) {
@@ -63,36 +60,41 @@ export default async function handler(
     }
       
     sanitizedQuestion = chat.question.trim().replaceAll('\n', ' ');  // OpenAI recommends replacing newlines with spaces for best results
-    
-    let chain: BaseChain | null = null;
 
-    // get settings object from file
-    context = ContextSettings.Get(chat.contextName);  
-
-    // get partial settings from client (to overwrite)
-    const contextfromClient = JSON.parse(JSON.stringify({ // stringify & parse to remove undefined values, in next step undefined must not overwrite default values
-      contextName: chat.contextName, 
-      promptTemperature: chat.promptTemperature, 
-      maxTokens: chat.maxTokens} as ChatSettings));
-
+    // get ContextSettings object from file
+    context = ContextSettings.Get(chat.contextName);
+  
     if ((context as BaseContextSettings)?.mode == 'OpenAI-QA') {
 
-      // now that we know we need QASettings 
-      // we take it's default, overwrite with settings from file, overwrite with settings from client
-      const qaContextSettings = Object.assign(DefaultQAContext(''), context, contextfromClient) as QAContextSettings;
+      // we take only defined partial QAContextSettings from the client
+      const partialContext = JSON.parse(JSON.stringify({ // stringify & parse removes properties with undefined values
+        promptTemperature: chat.promptTemperature,
+        promptId: chat.promptId,
+        maxTokens: chat.maxTokens,
+        } as QAContextSettings)
+      );
+
+      // Initially, the default settings are applied. Then 'partial' values from the file and then from the client are taken over. 
+      const qaContextSettings = Object.assign(DefaultQAContext(''), context, partialContext) as QAContextSettings;
+      
       context = qaContextSettings;  // reassign context to have everything in the log as well
       chat.maxTokens = qaContextSettings.maxTokens;
       chat.promptTemperature = qaContextSettings.prepromptTemperature;
     
-      //create chain
-      chain = await makeQAChain(qaContextSettings, chat.promptId, ( tokenType: TokenSource, token: string ) => {  
+      //create and call the chain
+      const response = await makeQAChain(
+        qaContextSettings,
+        chat.history || [],
+        sanitizedQuestion,
+        chainAbortController,
+        (tokenType: TokenSource, token: string) => {  
         switch(tokenType) {
           case TokenSource.Default:
             sendObject(res, { data: token });
             return;
           case TokenSource.QuestionGenerator:
             generatedQuestion += token;
-            sendObject(res, { data: `${FOLLOWUP_RESPONSE_PREFIX}${token}\n\n\n` });
+            sendObject(res, { data: `${GENERATED_QUESTION_RESPONSE_PREFIX}${token}\n\n\n` });
             return;
           case TokenSource.Error:  
             chatLog(`Error: ${token}`);
@@ -107,21 +109,13 @@ export default async function handler(
         }      
       });
 
+      await chatLog(response?.text);
+      sendObject(res, { sourceDocs: response?.sourceDocuments });
+
     } else {
       throw new Error('Invalid context.mode');
     }
-
-    process.once('uncaughtException', clientRequestAbortedHandler);
     
-    const response = await chain?.call({
-      question: sanitizedQuestion,
-      chat_history: createChatMessages(chat.history),
-      signal: chainAbortController.signal
-    });
-
-    await chatLog(response?.text);
-    sendObject(res, { sourceDocs: response?.sourceDocuments });
-
   } catch (error: any) {
 
     await chatLog(error.message);
@@ -130,6 +124,8 @@ export default async function handler(
   } finally {
     process.off('uncaughtException', clientRequestAbortedHandler);      // unwire process event handler
     sendDone(res);
+    const serverStorage = new ServerStorage();
+    await serverStorage.removeExpiredItems();
   }
 }
 
@@ -143,20 +139,3 @@ const sendDone = (res: NextApiResponse) => {
   res.end();
 };
 
-
-
-
-const createChatMessages = (history: [string,string][]) => {
-  let result: BaseChatMessage[] = [];
-  (history || []).forEach(hist => {
-      result.push(new HumanChatMessage(hist[0]));
-
-      if (hist[1].startsWith(FOLLOWUP_RESPONSE_PREFIX)) {
-        let valu = hist[1].substring(FOLLOWUP_RESPONSE_PREFIX.length);
-        result.push(new AIChatMessage(valu));
-      } else {
-        result.push(new AIChatMessage(hist[1]));
-      }        
-  });
-  return result;
-}

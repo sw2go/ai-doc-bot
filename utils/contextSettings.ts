@@ -55,7 +55,9 @@ export class ContextSettings {
     if (!this.Validate(settings)) {
       throw(new Error('Invalid context settings'));
     }
-    return settings as BaseContextSettings;
+    let result = settings as BaseContextSettings;
+    result.contextName = contextName; // Make sure contextName is correctly set
+    return result;
   }
 
   public static Validate(settings: any): boolean {
@@ -85,17 +87,24 @@ export interface ChatSettings {
   contextName: string;
   maxTokens?: number;
   promptTemperature?: number;
+  promptId?: number;
 }
 
-export interface BaseContextSettings extends ChatSettings {
+export interface BaseContextSettings {
   mode: 'OpenAI-QA' | 'Other' | undefined;    // when extending type, extend BaseSchema, DefaultXXXContext
   timeout: number;  
+  contextName: string;
   modelName: string;
+  promptId: number;
   prompts: string[][];
 }
 
 export interface QAContextSettings extends BaseContextSettings {
+  modelTokens: number;
+  maxTokens: number;
+  promptTemperature: number;
   prepromptTemperature: number;
+  prepromptId: number;
   preprompts: string[][];
   numberSource: number;
   returnSource: boolean;
@@ -107,8 +116,12 @@ export const DefaultQAContext = (namespace: string): QAContextSettings => {
     timeout: 30,
     contextName: namespace,
     modelName: 'gpt-3.5-turbo',
+    modelTokens: 4096,
+
     maxTokens: 250,
+
     promptTemperature: 0.5,
+    promptId: 0,
     prompts: [
       [
         `Du bist ein KI-Assistent. Du hilfst beim Erstellen von Marketing Texten für Kunden und Interessenten von ${namespace}.`,  
@@ -124,11 +137,10 @@ export const DefaultQAContext = (namespace: string): QAContextSettings => {
       ]
     ],
 
+
+    // alter preprompt: `Gegeben ist die folgende Unterhaltung und eine Folgefrage. Formuliere die Folgefrage um, so dass sie eine eigenständige Frage wird.`    
     prepromptTemperature: 0.5,
-
-    // alter preprompt: `Gegeben ist die folgende Unterhaltung und eine Folgefrage. Formuliere die Folgefrage um, so dass sie eine eigenständige Frage wird.`
-
-
+    prepromptId: 0,
     preprompts: [
       [
         `Gegeben ist der Chat-Verlauf und eine Folgefrage.`,
@@ -178,10 +190,16 @@ const QASchema = {
     "modelName": {
       "type": "string"
     },
+    "modelTokens": {
+      "type": "integer"
+    },    
     "maxTokens": {
       "type": "integer"
     },
     "promptTemperature": {
+      "type": "number"
+    },
+    "promptId": {
       "type": "number"
     },
     "prompts": {
@@ -194,6 +212,9 @@ const QASchema = {
       }
     },
     "prepromptTemperature": {
+      "type": "number"
+    },
+    "prepromptId": {
       "type": "number"
     },
     "preprompts": {
