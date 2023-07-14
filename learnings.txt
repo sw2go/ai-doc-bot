@@ -22,8 +22,20 @@
    OpenAI uses axois, Pinecone node-fetch, in the end there was no one fits all solution, and logging pinecone failed at all
    To see all outgoing http traffic I ended up by using a external open source tool "HTTP toolkit"
    
+6. Prompt engineering
+-  Remember always it is "text completion", write the prompt logically to support the flow of text leading to the answer.
+   That's the reason why prompts start with general info and then have more and more concrete info toward the end.
+   Often the prompts ending ist the beginning of the answer.
+   Sample 1: Frage: {question} Folgefrage:"
+   Sample 2: Kontext: {context} Antworte in Markdown:"
 
-6. Fehler mit "npm run dev" läuft alles
+-  Order of question and context can have a impact how the bot acts.
+   question first, context second: This makes the bot more likely to see itself as a third person, describing what is in the context
+   context first, question second: This makes the bot more likely to see itself knowing or beeing the things in the context
+
+   Try questions like: who is me? who are you? who is they? what can you do?
+
+7. Fehler mit "npm run dev" läuft alles
 
 Wenn als Docker container gibt's Fehler mit langchain "400 Bad request"
 
