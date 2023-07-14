@@ -25,12 +25,12 @@ export const getChatHistoryMessages = async (history: [string,string][], remaini
       let question = h[i][0];
       let answer = h[i][1].startsWith(GENERATED_QUESTION_RESPONSE_PREFIX) ? h[i][1].substring(GENERATED_QUESTION_RESPONSE_PREFIX.length) :  h[i][1];
 
-      let questionTokenCount = await serverStorage.GetCreateItem(question, () => countTokens(question));
-      let answerTokenCount = await serverStorage.GetCreateItem(answer, () => countTokens(answer));
-
-      //console.log(`h[q]: ${questionTokenCount} h[a]: ${answerTokenCount}  -  ${question} - ${answer.substring(0, 15)}`);
+      let questionTokenCount = await serverStorage.GetCreateItem(question, () => countTokens( `Human: ${question}\n`)); // langchain adds 'Human' and 'Assistant' in the Chat-History
+      let answerTokenCount = await serverStorage.GetCreateItem(answer, () => countTokens(`Assistant: ${answer}\n`));    // -> we have to count them too
 
       tokensUsed += (questionTokenCount + answerTokenCount);
+
+      //console.log(`used: ${tokensUsed} rem: ${remainingTokens} h[q]: ${questionTokenCount} h[a]: ${answerTokenCount}  -  ${question} - ${answer.substring(0, 15)}`);
 
       if (tokensUsed > remainingTokens) {
         console.log(`chat history cutoff after ${i} messages of ${h.length} due to token limit.`);
