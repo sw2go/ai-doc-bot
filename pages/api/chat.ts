@@ -6,6 +6,7 @@ import { CsvLog } from '@/utils/csvLog';
 import { GENERATED_QUESTION_RESPONSE_PREFIX, TokenSource } from '@/utils/makeChainHelper';
 import { ServerStorage } from '@/utils/serverStorage';
 
+const sorryMsg = "Jetzt ist mir die Frage entfallen.\n\nBitte versuchen Sie es noch einmal."
 
 export default async function handler(
   req: NextApiRequest,
@@ -98,12 +99,12 @@ export default async function handler(
             return;
           case TokenSource.Error:  
             chatLog(`Error: ${token}`);
-            sendObject(res, { data: `**Oops!** Da ist ein Fehler passiert.\n\nException: ${token}\n\nBitte laden sie die Seite neu und versuchen Sie es noch einmal.`});
+            sendObject(res, { data: `**Oops!** ${sorryMsg}`});
             sendDone(res);
             return;
           case TokenSource.Timeout:
             chatLog(`Timeout: ${token}`);
-            sendObject(res, { data: `**Oha lätz!** Der Server ist sehr beschäftigt und antwortet nicht.\n\nException: ${token}\n\nBitte versuchen Sie es noch einmal.`});
+            sendObject(res, { data: `**Oha lätz!** ${sorryMsg}`});
             sendDone(res);
             return;
         }      
@@ -119,7 +120,7 @@ export default async function handler(
   } catch (error: any) {
 
     await chatLog(error.message);
-    sendObject(res, { data: `**Oje!**Da ist ein Fehler passiert!\n\nException: ${error.message}\n\nBitte laden sie die Seite neu und versuchen Sie es noch einmal.`});
+    sendObject(res, { data: `**Oje!** ${sorryMsg}`});
 
   } finally {
     process.off('uncaughtException', clientRequestAbortedHandler);      // unwire process event handler
