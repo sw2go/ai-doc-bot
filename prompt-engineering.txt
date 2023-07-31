@@ -1,0 +1,36 @@
+Prompt engineering tips
+-----------------------
+
+1. Text completion
+------------------
+
+Remember always it is "text completion", write the prompt logically to support the flow of text leading to the answer.
+
+That's the reason why prompts start with general info and then have more and more concrete info toward the end.
+Often the prompts ending ist the beginning of the answer.
+Sample 1: Frage: {question} Folgefrage:"
+Sample 2: Kontext: {context} Antworte in Markdown:"
+
+2. Order matters
+----------------
+
+Order of question and context can have a impact how the bot acts.
+   
+question first, context second: 
+- This makes the bot more likely to see itself as a third person, describing what is in the context
+- Der Bot sagt: "die Firma ist spezialisert auf Softwareentwicklung"
+
+context first, question second: 
+- This makes the bot more likely to see itself knowing or beeing what is described in the context
+- Der Bot sagt: "ich bin spezialisert auf Softwareentwicklung"
+
+Try questions like: who is me? who are you? who is they? what can you do?
+
+3. Länge
+--------
+- Antworte mit weniger als 10 Worten
+
+
+4. Struktur
+-----------
+- Liste die 3 wichtigsten Vorteile
