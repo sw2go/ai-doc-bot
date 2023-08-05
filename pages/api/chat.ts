@@ -118,10 +118,13 @@ export default async function handler(
     }
     
   } catch (error: any) {
-
     await chatLog(error.message);
-    sendObject(res, { data: `**Oje!** ${sorryMsg}`});
-
+    if (error.message?.startsWith("PineconeClient")) {
+      sendObject(res, { data: `😴 Erwischt! Mein Grosshirn ist eingeschlafen. Wenden Sie sich bitte an meinen Chef, er kann mich wecken.`});
+    } else {
+      sendObject(res, { data: `**Oje!** ${sorryMsg}`});
+    }
+    
   } finally {
     process.off('uncaughtException', clientRequestAbortedHandler);      // unwire process event handler
     sendDone(res);
