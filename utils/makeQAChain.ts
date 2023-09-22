@@ -48,8 +48,24 @@ export const makeQAChain = async (
   onTokenStream: (tokenType: TokenSource, token: string) => void,
 ) => {
 
+  // If Index is missing try to restore it form the Collections
+  if (!(await pinecone.listIndexes()).includes(PINECONE_INDEX_NAME)) {
+    if ((await pinecone.listCollections()).includes(PINECONE_INDEX_NAME)) {
+      await pinecone.createIndex({
+        createRequest: {
+          name: PINECONE_INDEX_NAME,
+          dimension: 1536,
+          metric: 'cosine',
+          pods: 1,
+          podType: 's1.x1',
+          sourceCollection: PINECONE_INDEX_NAME,
+        }
+      });
+    }
+  }
+
   const index = pinecone.Index(PINECONE_INDEX_NAME);
-    
+  
   const vectorStore = await PineconeStore.fromExistingIndex(
     new OpenAIEmbeddings({}),
     {
