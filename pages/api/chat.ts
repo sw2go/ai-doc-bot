@@ -120,7 +120,7 @@ export default async function handler(
   } catch (error: any) {
     await chatLog(error.message);
     if (error.message?.startsWith("PineconeClient")) {
-      sendObject(res, { data: `😴 Erwischt! Mein Grosshirn ist eingeschlafen. Es brauche ca. 1 Minute um wach zu werden.`});
+      sendObject(res, { data: `😴 Erwischt! Mein Grosshirn ist tief eingeschlafen. Bitte versuchen Sie es in einer Minute nochmals.`});
     } else {
       sendObject(res, { data: `**Oje!** ${sorryMsg}`});
     }
